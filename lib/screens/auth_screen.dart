@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+import 'package:postopcare/screens/login_screen.dart';
+import 'package:postopcare/screens/signin_screen.dart';
 import '../widgets/custom_button.dart';
 
 class AuthScreen extends StatefulWidget {
@@ -54,9 +56,13 @@ class _AuthScreenState extends State<AuthScreen> {
 
                 // Sign In Button
                 CustomButton(
-                  text: 'Sign In',
+                  text: 'Create an Account',
                   onPressed: () {
                     // Handle sign in
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(builder: (context) => const SignInScreen()),
+                    );
                   },
                 ),
                 const SizedBox(height: 20),
@@ -93,6 +99,10 @@ class _AuthScreenState extends State<AuthScreen> {
                   text: 'Log In',
                   onPressed: () {
                     // Handle login
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(builder: (context) => const LoginScreen()),
+                    );
                   },
                 ),
               ],

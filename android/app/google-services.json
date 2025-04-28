@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "605136903095",
+    "project_id": "postopcare-6a644",
+    "storage_bucket": "postopcare-6a644.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:605136903095:android:f55f1980d940fda4ed6632",
+        "android_client_info": {
+          "package_name": "com.example.postopcare"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyBqDU_EWbzLil9XDURH85kJxpTBhZ_OnQ4"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

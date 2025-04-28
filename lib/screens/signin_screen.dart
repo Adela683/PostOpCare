@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
-import '../widgets/custom_button.dart';
+import 'package:postopcare/widgets/custom_button.dart'; // Custom button widge
+import 'package:postopcare/data/repositories/user_repository/user_repository.dart'; // Import user data logic
+import 'package:postopcare/data/models/user.dart'; // AppUser model import
 
 class SignInScreen extends StatefulWidget {
   const SignInScreen({super.key});
@@ -14,7 +16,65 @@ class _SignInScreenState extends State<SignInScreen> {
   // Controllers for TextFields
   final TextEditingController _nameController = TextEditingController();
   final TextEditingController _emailController = TextEditingController();
+  final TextEditingController _usernameController = TextEditingController();
   final TextEditingController _passwordController = TextEditingController();
+
+  // Create instances of the repositories
+  final AuthenticationRepository _authRepo = AuthenticationRepository();
+  final UserDataRepository _userDataRepo = UserDataRepository();
+
+  // Sign-Up method
+  Future<void> _signUp() async {
+    String name = _nameController.text;
+    String email = _emailController.text;
+    String username = _usernameController.text;
+    String password = _passwordController.text;
+
+    // Validate the input fields
+    if (_formKey.currentState?.validate() ?? false) {
+      // Call Firebase authentication to sign up the user
+      var userCredential = await _authRepo.signUpUser(email, password);
+
+      if (userCredential != null) {
+        // Create an AppUser object
+        AppUser appUser = AppUser(
+          id: userCredential.user!.uid,
+          name: name,
+          email: email,
+          username: username,
+        );
+
+        // Save user data to Firestore
+        await _userDataRepo.saveUserData(appUser);
+
+        // After successful sign-up, navigate to another screen (e.g., HomeScreen)
+        print('User signed up: ${appUser.name}');
+        // Navigate to another screen, e.g. HomeScreen (to be implemented)
+        // Navigator.pushReplacement(context, MaterialPageRoute(builder: (context) => HomeScreen()));
+      } else {
+        _showErrorDialog("Sign-up failed. Please try again.");
+      }
+    }
+  }
+
+  // Method to show error dialog
+  void _showErrorDialog(String message) {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: Text('Error'),
+        content: Text(message),
+        actions: [
+          TextButton(
+            onPressed: () {
+              Navigator.pop(context);
+            },
+            child: Text('OK'),
+          ),
+        ],
+      ),
+    );
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -91,6 +151,26 @@ class _SignInScreenState extends State<SignInScreen> {
                   ),
                   const SizedBox(height: 20),
 
+                  // Username Field
+                  TextFormField(
+                    controller: _usernameController,
+                    decoration: const InputDecoration(
+                      labelText: 'Username',
+                      labelStyle: TextStyle(color: Color.fromARGB(255, 45, 65, 120)),
+                      border: OutlineInputBorder(),
+                      focusedBorder: OutlineInputBorder(
+                        borderSide: BorderSide(color: Color.fromARGB(255, 66, 197, 214)),
+                      ),
+                    ),
+                    validator: (value) {
+                      if (value == null || value.isEmpty) {
+                        return 'Please enter a username';
+                      }
+                      return null;
+                    },
+                  ),
+                  const SizedBox(height: 20),
+
                   // Password Field
                   TextFormField(
                     controller: _passwordController,
@@ -112,14 +192,10 @@ class _SignInScreenState extends State<SignInScreen> {
                   ),
                   const SizedBox(height: 40),
 
-                  // Sign In Button
+                  // Sign Up Button
                   CustomButton(
-                    text: 'Sign In',
-                    onPressed: () {
-                      if (_formKey.currentState?.validate() ?? false) {
-                        // Proceed with sign in process (could integrate Firebase here)
-                      }
-                    },
+                    text: 'Sign Up',
+                    onPressed: _signUp,
                   ),
                 ],
               ),

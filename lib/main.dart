@@ -1,8 +1,11 @@
 import 'package:flutter/material.dart';
-import 'screens/auth_screen.dart';
-import 'screens/signin_screen.dart';
+import 'package:firebase_core/firebase_core.dart'; // Import Firebase Core
+import 'package:postopcare/screens/signin_screen.dart';
+import 'screens/auth_screen.dart'; // Your starting screen
 
-void main() {
+void main() async {
+  WidgetsFlutterBinding.ensureInitialized();
+  await Firebase.initializeApp(); // Initialize Firebase
   runApp(const PostOpCareApp());
 }
 
@@ -18,7 +21,7 @@ class PostOpCareApp extends StatelessWidget {
         colorScheme: ColorScheme.fromSeed(seedColor: Colors.blueAccent),
         useMaterial3: true,
       ),
-      home: const SignInScreen(),
+      home: const AuthScreen(),  // Your initial screen
     );
   }
 }
