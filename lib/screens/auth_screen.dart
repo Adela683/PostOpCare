@@ -61,7 +61,9 @@ class _AuthScreenState extends State<AuthScreen> {
                     // Handle sign in
                     Navigator.push(
                       context,
-                      MaterialPageRoute(builder: (context) => const SignInScreen()),
+                      MaterialPageRoute(
+                        builder: (context) => const SignInScreen(),
+                      ),
                     );
                   },
                 ),
@@ -101,7 +103,9 @@ class _AuthScreenState extends State<AuthScreen> {
                     // Handle login
                     Navigator.push(
                       context,
-                      MaterialPageRoute(builder: (context) => const LoginScreen()),
+                      MaterialPageRoute(
+                        builder: (context) => const LoginScreen(),
+                      ),
                     );
                   },
                 ),
