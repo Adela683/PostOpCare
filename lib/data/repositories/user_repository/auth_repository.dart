@@ -1,22 +1,37 @@
-// lib/repositories/user_repository/authentication_repository.dart
 import 'package:firebase_auth/firebase_auth.dart';
 
-class AuthenticationRepository {
-  final FirebaseAuth _firebaseAuth = FirebaseAuth.instance;
+class AuthRepository {
+  final FirebaseAuth _firebaseAuth;
 
-  Future<UserCredential> signUpUser(String email, String password) async {
-    return await _firebaseAuth.createUserWithEmailAndPassword(email: email, password: password);
+  AuthRepository({FirebaseAuth? firebaseAuth})
+    : _firebaseAuth = firebaseAuth ?? FirebaseAuth.instance;
+
+  // Sign In
+  Future<UserCredential> signIn(String email, String password) async {
+    return await _firebaseAuth.signInWithEmailAndPassword(
+      email: email,
+      password: password,
+    );
   }
 
-  Future<UserCredential> signInUser(String email, String password) async {
-    return await _firebaseAuth.signInWithEmailAndPassword(email: email, password: password);
+  // Sign Up
+  Future<UserCredential> signUp(String email, String password) async {
+    return await _firebaseAuth.createUserWithEmailAndPassword(
+      email: email,
+      password: password,
+    );
   }
 
+  // Sign Out
   Future<void> signOut() async {
     await _firebaseAuth.signOut();
   }
 
-  User? getCurrentUser() {
-    return _firebaseAuth.currentUser;
+  // Current user
+  User? get currentUser => _firebaseAuth.currentUser;
+
+  // Reset password
+  Future<void> sendPasswordResetEmail(String email) async {
+    await _firebaseAuth.sendPasswordResetEmail(email: email);
   }
 }

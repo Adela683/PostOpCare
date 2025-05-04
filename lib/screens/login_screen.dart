@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import '../widgets/custom_button.dart';
 import 'signin_screen.dart';
+import 'package:postopcare/data/repositories/user_repository/user_repository.dart';
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
@@ -12,6 +13,46 @@ class LoginScreen extends StatefulWidget {
 class _LoginScreenState extends State<LoginScreen> {
   final TextEditingController _emailController = TextEditingController();
   final TextEditingController _passwordController = TextEditingController();
+
+  Future<void> handleLogin() async {
+    final email = _emailController.text.trim();
+    final password = _passwordController.text;
+
+    if (email.isEmpty || password.isEmpty) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Please enter email and password')),
+      );
+      return;
+    }
+
+    try {
+      final userRepo = UserRepository(
+        authRepository: AuthRepository(),
+        userDataRepository: UserDataRepository(),
+      );
+
+      final user = await userRepo.login(email: email, password: password);
+
+      if (!mounted) return;
+
+      if (user == null) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Login failed. Please try again.')),
+        );
+        return;
+      }
+
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text('Welcome back, ${user.name}!')));
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text('Error: ${e.toString()}')));
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -81,8 +122,7 @@ class _LoginScreenState extends State<LoginScreen> {
                 CustomButton(
                   text: 'Log In',
                   onPressed: () {
-                    // Handle Login
-                    // Add logic for login here
+                    handleLogin();
                   },
                 ),
                 const SizedBox(height: 20),
@@ -97,7 +137,9 @@ class _LoginScreenState extends State<LoginScreen> {
                         // Navigate to the Sign In screen
                         Navigator.push(
                           context,
-                          MaterialPageRoute(builder: (context) => const SignInScreen()),
+                          MaterialPageRoute(
+                            builder: (context) => const SignInScreen(),
+                          ),
                         );
                       },
                       child: const Text('Sign Up'),
