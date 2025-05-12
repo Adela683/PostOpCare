@@ -58,10 +58,7 @@ class MainScreen extends StatelessWidget {
         ],
       ),
       // Sidebar (Drawer) folosind CustomDrawer
-      drawer: CustomDrawer(
-        userName: user.name,
-        userEmail: user.email,
-      ),
+      drawer: CustomDrawer(user: user),
     );
   }
 }
