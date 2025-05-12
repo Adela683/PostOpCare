@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import '../widgets/custom_button.dart';
 import 'signin_screen.dart';
 import 'package:postopcare/data/repositories/user_repository/user_repository.dart';
+import 'main_screen.dart';
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
@@ -46,6 +47,12 @@ class _LoginScreenState extends State<LoginScreen> {
       ScaffoldMessenger.of(
         context,
       ).showSnackBar(SnackBar(content: Text('Welcome back, ${user.name}!')));
+
+      // Navigate to the main screen with the user data
+      Navigator.pushReplacement(
+        context,
+        MaterialPageRoute(builder: (context) => MainScreen(user: user)),
+      );
     } catch (e) {
       if (!mounted) return;
       ScaffoldMessenger.of(
