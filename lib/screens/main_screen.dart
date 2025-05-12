@@ -1,9 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:postopcare/widgets/calendar.dart';
 import 'package:postopcare/data/models/user.dart';
-import 'package:postopcare/screens/auth_screen.dart'; // Importă AuthScreen pentru logout
-import 'package:postopcare/screens/surgery_template_screen.dart'; // Import SurgeryScreen
-import 'package:postopcare/screens/pacient_screen.dart'; // Import TemplateScreen
+import 'package:postopcare/widgets/sidebar.dart'; // Import CustomDrawer
 
 class MainScreen extends StatelessWidget {
   final AppUser user;
@@ -59,74 +57,10 @@ class MainScreen extends StatelessWidget {
           ),
         ],
       ),
-      // Sidebar (Drawer) pentru a adăuga butonul de logout
-      drawer: Drawer(
-        child: ListView(
-          padding: EdgeInsets.zero,
-          children: [
-            // Header-ul sidebar-ului
-            UserAccountsDrawerHeader(
-              //accountName in black color
-              accountName: Text(
-                user.name,
-                style: TextStyle(color: Colors.black),
-              ),
-              accountEmail: Text(
-                user.email,
-                style: TextStyle(color: Colors.black),
-              ),
-              currentAccountPicture: CircleAvatar(
-                backgroundColor: Colors.white,
-                child: Text(
-                  user.name[0].toUpperCase(), // Prima literă a numelui
-                  style: TextStyle(fontSize: 40.0, color: Colors.black),
-                ),
-              ),
-              decoration: BoxDecoration(
-                image: DecorationImage(
-                  image: AssetImage('assets/images/medical_image.png'), // Fundalul cu imaginea aleasă
-                  fit: BoxFit.cover,
-                ),
-              ),
-            ),
-            
-            // Buton pentru Surgery
-            ListTile(
-              title: Text('Surgery_templates'),
-              leading: Icon(Icons.medical_services),
-              onTap: () {
-                // Navighează la SurgeryScreen
-                // Navigator.push(
-                //   context,
-                //   MaterialPageRoute(builder: (context) => SurgeryScreen()),
-                // );
-              },
-            ),
-            // Buton pentru Template
-            ListTile(
-              title: Text('Pacients'),
-              leading: Icon(Icons.people),
-              onTap: () {
-                // Navighează la TemplateScreen
-                // Navigator.push(
-                //   context,
-                //   MaterialPageRoute(builder: (context) => PacientScreen()),
-                // );
-              },
-            ),
-            ListTile(
-              title: Text('Log Out'),
-              leading: Icon(Icons.logout),
-              onTap: () {
-                // Redirecționează utilizatorul la AuthScreen pentru logout
-                Navigator.pushReplacement(
-                  context,
-                  MaterialPageRoute(builder: (context) => const AuthScreen()),
-                );
-              },
-            ),
-          ],
-        ),
+      // Sidebar (Drawer) folosind CustomDrawer
+      drawer: CustomDrawer(
+        userName: user.name,
+        userEmail: user.email,
       ),
     );
   }
