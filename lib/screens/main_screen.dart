@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:postopcare/widgets/calendar.dart';
 import 'package:postopcare/data/models/user.dart';
 import 'package:postopcare/screens/auth_screen.dart'; // Importă AuthScreen pentru logout
+import 'package:postopcare/screens/surgery_template_screen.dart'; // Import SurgeryScreen
+import 'package:postopcare/screens/pacient_screen.dart'; // Import TemplateScreen
 
 class MainScreen extends StatelessWidget {
   final AppUser user;
@@ -31,16 +33,15 @@ class MainScreen extends StatelessWidget {
         backgroundColor: const Color.fromARGB(255, 15, 172, 172),
         // Elimină butonul implicit din stânga care se folosește pentru back
         automaticallyImplyLeading: false,
-        // Adaugă butonul de meniul de tip hamburger
-        actions: [
-          IconButton(
-            icon: const Icon(Icons.menu),
-            onPressed: () {
-              // Deschide Drawer-ul (Sidebar-ul)
-              _scaffoldKey.currentState?.openDrawer();
-            },
-          ),
-        ],
+        // Mută butonul de meniul de tip hamburger în partea stângă
+        leading: IconButton(
+          color: Colors.white,
+          icon: const Icon(Icons.menu),
+          onPressed: () {
+            // Deschide Drawer-ul (Sidebar-ul)
+            _scaffoldKey.currentState?.openDrawer();
+          },
+        ),
       ),
       body: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -65,8 +66,15 @@ class MainScreen extends StatelessWidget {
           children: [
             // Header-ul sidebar-ului
             UserAccountsDrawerHeader(
-              accountName: Text(user.name),
-              accountEmail: Text(user.email),
+              //accountName in black color
+              accountName: Text(
+                user.name,
+                style: TextStyle(color: Colors.black),
+              ),
+              accountEmail: Text(
+                user.email,
+                style: TextStyle(color: Colors.black),
+              ),
               currentAccountPicture: CircleAvatar(
                 backgroundColor: Colors.white,
                 child: Text(
@@ -74,8 +82,38 @@ class MainScreen extends StatelessWidget {
                   style: TextStyle(fontSize: 40.0, color: Colors.black),
                 ),
               ),
+              decoration: BoxDecoration(
+                image: DecorationImage(
+                  image: AssetImage('assets/images/medical_image.png'), // Fundalul cu imaginea aleasă
+                  fit: BoxFit.cover,
+                ),
+              ),
             ),
-            // Butonul de logout
+            
+            // Buton pentru Surgery
+            ListTile(
+              title: Text('Surgery_templates'),
+              leading: Icon(Icons.medical_services),
+              onTap: () {
+                // Navighează la SurgeryScreen
+                // Navigator.push(
+                //   context,
+                //   MaterialPageRoute(builder: (context) => SurgeryScreen()),
+                // );
+              },
+            ),
+            // Buton pentru Template
+            ListTile(
+              title: Text('Pacients'),
+              leading: Icon(Icons.people),
+              onTap: () {
+                // Navighează la TemplateScreen
+                // Navigator.push(
+                //   context,
+                //   MaterialPageRoute(builder: (context) => PacientScreen()),
+                // );
+              },
+            ),
             ListTile(
               title: Text('Log Out'),
               leading: Icon(Icons.logout),
