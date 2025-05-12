@@ -179,23 +179,49 @@ class _SurgeryTemplateScreenState extends State<SurgeryTemplateScreen> {
           ),
         ],
       ),
-      body:
+      body: Stack(
+        children: [
+          // Background-ul personalizat
+          Positioned.fill(
+            child: Image.asset(
+              'assets/images/templates_background.png', // Fundalul cu imaginea
+              fit: BoxFit.cover,
+            ),
+          ),
           _filteredTemplates.isEmpty
               ? Center(child: CircularProgressIndicator()) // Loading
               : ListView.builder(
-                itemCount: _filteredTemplates.length,
-                itemBuilder: (context, index) {
-                  final template = _filteredTemplates[index];
-                  return ListTile(
-                    title: Text(template.name),
-                    subtitle: Text(
-                      'Intervals: ${template.intervals.join(', ')}',
-                    ),
-                    onTap:
-                        () => _viewTemplate(template), // Vizualizare template
-                  );
-                },
-              ),
+                  itemCount: _filteredTemplates.length,
+                  itemBuilder: (context, index) {
+                    final template = _filteredTemplates[index];
+                    return Padding(
+                      padding: const EdgeInsets.all(8.0),
+                      child: Card(
+                        color: Colors.white.withOpacity(0.8),
+                        elevation: 5,
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                        child: ListTile(
+                          title: Text(
+                            template.name,
+                            style: TextStyle(
+                              fontWeight: FontWeight.bold,
+                              fontSize: 18,
+                            ),
+                          ),
+                          subtitle: Text(
+                            'Intervals: ${template.intervals.join(', ')}',
+                            style: TextStyle(fontSize: 14),
+                          ),
+                          onTap: () => _viewTemplate(template), // Vizualizare template
+                        ),
+                      ),
+                    );
+                  },
+                ),
+        ],
+      ),
     );
   }
 }
