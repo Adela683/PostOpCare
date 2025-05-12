@@ -28,7 +28,7 @@ class MainScreen extends StatelessWidget {
             ),
           ),
         ),
-        backgroundColor: const Color.fromARGB(255, 15, 172, 172),
+        backgroundColor: const Color.fromARGB(255, 10, 221, 221),
         // Elimină butonul implicit din stânga care se folosește pentru back
         automaticallyImplyLeading: false,
         // Mută butonul de meniul de tip hamburger în partea stângă

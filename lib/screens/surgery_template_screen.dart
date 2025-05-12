@@ -5,10 +5,7 @@ import 'package:postopcare/data/repositories/surgery_templates_repository/surger
 class SurgeryTemplateScreen extends StatefulWidget {
   final AppUser user; // Folosim obiectul complet 'user'
 
-  const SurgeryTemplateScreen({
-    super.key,
-    required this.user,
-  }); // Primim obiectul complet 'user'
+  const SurgeryTemplateScreen({super.key, required this.user});
 
   @override
   State<SurgeryTemplateScreen> createState() => _SurgeryTemplateScreenState();
@@ -23,15 +20,12 @@ class _SurgeryTemplateScreenState extends State<SurgeryTemplateScreen> {
   @override
   void initState() {
     super.initState();
-    _templateRepo = SurgeryTemplateRepository(
-      userId: widget.user.id!,
-    ); // Folosim 'widget.user.id'
+    _templateRepo = SurgeryTemplateRepository(userId: widget.user.id!);
     _templates = [];
     _filteredTemplates = [];
     _searchController = TextEditingController();
     _loadTemplates();
 
-    // Ascultă modificările în TextEditingController
     _searchController.addListener(_filterTemplates);
   }
 
@@ -108,7 +102,6 @@ class _SurgeryTemplateScreenState extends State<SurgeryTemplateScreen> {
                   _templateRepo
                       .addTemplate(newTemplate)
                       .then((_) {
-                        // Încarcă din nou template-urile
                         _loadTemplates();
                         Navigator.of(context).pop();
                       })
@@ -131,11 +124,18 @@ class _SurgeryTemplateScreenState extends State<SurgeryTemplateScreen> {
     );
   }
 
-  // Afișarea unui template cu intervalele sale
+  // Afișarea unui template cu intervalele sale și opțiunea de editare
   void _viewTemplate(SurgeryTemplate template) {
     showDialog(
       context: context,
       builder: (BuildContext context) {
+        TextEditingController nameController = TextEditingController(
+          text: template.name,
+        );
+        TextEditingController intervalsController = TextEditingController(
+          text: template.intervals.join(','),
+        );
+
         return AlertDialog(
           title: Text(template.name),
           content: Column(
@@ -143,12 +143,56 @@ class _SurgeryTemplateScreenState extends State<SurgeryTemplateScreen> {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Text('Intervals: ${template.intervals.join(', ')} weeks.'),
+              TextField(
+                controller: nameController,
+                decoration: InputDecoration(labelText: 'Template Name'),
+              ),
+              TextField(
+                controller: intervalsController,
+                decoration: InputDecoration(
+                  labelText: 'Intervals (comma separated)',
+                ),
+                keyboardType: TextInputType.number,
+              ),
             ],
           ),
           actions: [
             TextButton(
+              onPressed: () {
+                final updatedName = nameController.text;
+                final updatedIntervals =
+                    intervalsController.text
+                        .split(',')
+                        .map((e) => int.parse(e.trim()))
+                        .toList();
+
+                if (updatedName.isNotEmpty && updatedIntervals.isNotEmpty) {
+                  final updatedTemplate = SurgeryTemplate(
+                    id: template.id,
+                    name: updatedName,
+                    intervals: updatedIntervals,
+                  );
+
+                  _templateRepo
+                      .updateTemplate(updatedTemplate)
+                      .then((_) {
+                        _loadTemplates();
+                        Navigator.of(context).pop();
+                      })
+                      .catchError((e) {
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          SnackBar(
+                            content: Text('Error updating template: $e'),
+                          ),
+                        );
+                      });
+                }
+              },
+              child: Text('Save'),
+            ),
+            TextButton(
               onPressed: () => Navigator.of(context).pop(),
-              child: Text('Close'),
+              child: Text('Cancel'),
             ),
           ],
         );
@@ -161,16 +205,12 @@ class _SurgeryTemplateScreenState extends State<SurgeryTemplateScreen> {
     return Scaffold(
       appBar: AppBar(
         title: Text('Surgery Templates'),
-        backgroundColor: const Color.fromARGB(255, 17, 213, 213),
+        backgroundColor: const Color.fromARGB(255, 10, 221, 221),
         actions: [
-          IconButton(
-            icon: Icon(Icons.add),
-            onPressed: _addTemplate, // Adaugă un template nou
-          ),
+          IconButton(icon: Icon(Icons.add), onPressed: _addTemplate),
           IconButton(
             icon: Icon(Icons.search),
             onPressed: () {
-              // Focus pe TextField de căutare
               showSearch(
                 context: context,
                 delegate: _SearchDelegate(templates: _filteredTemplates),
@@ -181,45 +221,44 @@ class _SurgeryTemplateScreenState extends State<SurgeryTemplateScreen> {
       ),
       body: Stack(
         children: [
-          // Background-ul personalizat
           Positioned.fill(
             child: Image.asset(
-              'assets/images/templates_background.png', // Fundalul cu imaginea
+              'assets/images/templates_background.png',
               fit: BoxFit.cover,
             ),
           ),
           _filteredTemplates.isEmpty
-              ? Center(child: CircularProgressIndicator()) // Loading
+              ? Center(child: CircularProgressIndicator())
               : ListView.builder(
-                  itemCount: _filteredTemplates.length,
-                  itemBuilder: (context, index) {
-                    final template = _filteredTemplates[index];
-                    return Padding(
-                      padding: const EdgeInsets.all(8.0),
-                      child: Card(
-                        color: Colors.white.withOpacity(0.8),
-                        elevation: 5,
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(12),
-                        ),
-                        child: ListTile(
-                          title: Text(
-                            template.name,
-                            style: TextStyle(
-                              fontWeight: FontWeight.bold,
-                              fontSize: 18,
-                            ),
-                          ),
-                          subtitle: Text(
-                            'Intervals: ${template.intervals.join(', ')}',
-                            style: TextStyle(fontSize: 14),
-                          ),
-                          onTap: () => _viewTemplate(template), // Vizualizare template
-                        ),
+                itemCount: _filteredTemplates.length,
+                itemBuilder: (context, index) {
+                  final template = _filteredTemplates[index];
+                  return Padding(
+                    padding: const EdgeInsets.all(8.0),
+                    child: Card(
+                      color: Colors.white.withOpacity(0.8),
+                      elevation: 5,
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(12),
                       ),
-                    );
-                  },
-                ),
+                      child: ListTile(
+                        title: Text(
+                          template.name,
+                          style: TextStyle(
+                            fontWeight: FontWeight.bold,
+                            fontSize: 18,
+                          ),
+                        ),
+                        subtitle: Text(
+                          'Intervals: ${template.intervals.join(', ')}',
+                          style: TextStyle(fontSize: 14),
+                        ),
+                        onTap: () => _viewTemplate(template),
+                      ),
+                    ),
+                  );
+                },
+              ),
         ],
       ),
     );
@@ -233,7 +272,6 @@ class _SearchDelegate extends SearchDelegate {
 
   @override
   Widget buildSuggestions(BuildContext context) {
-    // Căutare în timp real pe măsură ce utilizatorul tastează
     final suggestions =
         query.isEmpty
             ? templates
@@ -252,7 +290,6 @@ class _SearchDelegate extends SearchDelegate {
           title: Text(template.name),
           subtitle: Text('Intervals: ${template.intervals.join(', ')}'),
           onTap: () {
-            // Afișează template-ul ales
             Navigator.push(
               context,
               MaterialPageRoute(
@@ -267,7 +304,6 @@ class _SearchDelegate extends SearchDelegate {
 
   @override
   Widget buildResults(BuildContext context) {
-    // Căutare finală care arată rezultatele
     final results =
         query.isEmpty
             ? templates
@@ -286,7 +322,6 @@ class _SearchDelegate extends SearchDelegate {
           title: Text(template.name),
           subtitle: Text('Intervals: ${template.intervals.join(', ')}'),
           onTap: () {
-            // Afișează template-ul ales
             Navigator.push(
               context,
               MaterialPageRoute(
@@ -301,7 +336,6 @@ class _SearchDelegate extends SearchDelegate {
 
   @override
   Widget buildLeading(BuildContext context) {
-    // Butonul pentru a închide căutarea (butonul de back)
     return IconButton(
       icon: Icon(Icons.arrow_back),
       onPressed: () {
@@ -312,28 +346,23 @@ class _SearchDelegate extends SearchDelegate {
 
   @override
   List<Widget>? buildActions(BuildContext context) {
-    // Buton pentru a șterge textul introdus în câmpul de căutare
     return [
       IconButton(
         icon: Icon(Icons.clear),
         onPressed: () {
-          query = ''; // Resetează câmpul de căutare
+          query = '';
         },
       ),
     ];
   }
 
-  // Funcție pentru a vizualiza detalii despre template
   Widget _viewTemplateScreen(SurgeryTemplate template) {
     return Scaffold(
       appBar: AppBar(title: Text(template.name)),
       body: Padding(
         padding: const EdgeInsets.all(16.0),
         child: Column(
-          children: [
-            Text('Intervals: ${template.intervals.join(', ')} weeks'),
-            // Poți adăuga mai multe detalii despre template aici
-          ],
+          children: [Text('Intervals: ${template.intervals.join(', ')} weeks')],
         ),
       ),
     );
