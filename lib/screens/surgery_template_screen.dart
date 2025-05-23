@@ -15,7 +15,6 @@ class _SurgeryTemplateScreenState extends State<SurgeryTemplateScreen> {
   late SurgeryTemplateRepository _templateRepo;
   late List<SurgeryTemplate> _templates;
   late TextEditingController _nameController;
-  List<int> _intervals = [];
   List<int> _selectedIntervals = [];
   late TextEditingController _newIntervalController;
 
@@ -29,7 +28,6 @@ class _SurgeryTemplateScreenState extends State<SurgeryTemplateScreen> {
     _loadTemplates();
   }
 
-  // Încarcă template-urile din Firestore
   Future<void> _loadTemplates() async {
     try {
       final templates = await _templateRepo.getAllTemplates();
@@ -37,13 +35,12 @@ class _SurgeryTemplateScreenState extends State<SurgeryTemplateScreen> {
         _templates = templates;
       });
     } catch (e) {
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(SnackBar(content: Text('Error loading templates: $e')));
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Error loading templates: $e')),
+      );
     }
   }
 
-  // Adăugarea unui nou template cu intervale
   void _addTemplate() {
     showDialog(
       context: context,
@@ -129,6 +126,9 @@ class _SurgeryTemplateScreenState extends State<SurgeryTemplateScreen> {
                   _templateRepo.addTemplate(newTemplate).then((_) {
                     _loadTemplates();
                     Navigator.of(context).pop();
+                    _nameController.clear();
+                    _newIntervalController.clear();
+                    _selectedIntervals.clear();
                   }).catchError((e) {
                     ScaffoldMessenger.of(context).showSnackBar(
                       SnackBar(content: Text('Error adding template: $e')),
@@ -148,68 +148,20 @@ class _SurgeryTemplateScreenState extends State<SurgeryTemplateScreen> {
     );
   }
 
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(
-        title: Text('Surgery Templates'),
-        backgroundColor: const Color.fromARGB(255, 10, 221, 221),
-        actions: [
-          IconButton(icon: Icon(Icons.add), onPressed: _addTemplate),
-        ],
-      ),
-      body: _templates.isEmpty
-          ? Center(child: CircularProgressIndicator())
-          : ListView.builder(
-              itemCount: _templates.length,
-              itemBuilder: (context, index) {
-                final template = _templates[index];
-                return Padding(
-                  padding: const EdgeInsets.all(8.0),
-                  child: Card(
-                    color: Colors.white.withOpacity(0.8),
-                    elevation: 5,
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-                    child: ListTile(
-                      title: Text(
-                        template.name,
-                        style: TextStyle(fontWeight: FontWeight.bold, fontSize: 18),
-                      ),
-                      subtitle: Text(
-                        'Intervals: ${_formatIntervals(template.intervals)}',
-                        style: TextStyle(fontSize: 14),
-                      ),
-                      onTap: () => _viewTemplate(template),
-                    ),
-                  ),
-                );
-              },
-            ),
-    );
-  }
-
   String _formatIntervals(List<int> intervals) {
     return intervals
-        .map((interval) => interval == 1
-            ? '$interval week'
-            : '$interval weeks')
+        .map((interval) => interval == 1 ? '$interval week' : '$interval weeks')
         .join(', ');
   }
 
-  // Vizualizarea unui template și opțiunea de a-l edita
   void _viewTemplate(SurgeryTemplate template) {
+    TextEditingController nameController = TextEditingController(text: template.name);
+    TextEditingController intervalsController =
+        TextEditingController(text: template.intervals.join(','));
+
     showDialog(
       context: context,
       builder: (BuildContext context) {
-        TextEditingController nameController = TextEditingController(
-          text: template.name,
-        );
-        TextEditingController intervalsController = TextEditingController(
-          text: template.intervals.join(','),
-        );
-
         return AlertDialog(
           title: Text(template.name),
           content: Column(
@@ -222,9 +174,7 @@ class _SurgeryTemplateScreenState extends State<SurgeryTemplateScreen> {
               ),
               TextField(
                 controller: intervalsController,
-                decoration: InputDecoration(
-                  labelText: 'Intervals (comma separated)',
-                ),
+                decoration: InputDecoration(labelText: 'Intervals (comma separated)'),
                 keyboardType: TextInputType.number,
               ),
             ],
@@ -233,8 +183,11 @@ class _SurgeryTemplateScreenState extends State<SurgeryTemplateScreen> {
             TextButton(
               onPressed: () {
                 final updatedName = nameController.text;
-                final updatedIntervals =
-                    intervalsController.text.split(',').map((e) => int.parse(e.trim())).toList();
+                final updatedIntervals = intervalsController.text
+                    .split(',')
+                    .map((e) => int.tryParse(e.trim()))
+                    .whereType<int>()
+                    .toList();
 
                 if (updatedName.isNotEmpty && updatedIntervals.isNotEmpty) {
                   final updatedTemplate = SurgeryTemplate(
@@ -261,6 +214,56 @@ class _SurgeryTemplateScreenState extends State<SurgeryTemplateScreen> {
           ],
         );
       },
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(
+        title: Text('Surgery Templates'),
+        backgroundColor: const Color.fromARGB(255, 10, 221, 221),
+        actions: [
+          IconButton(icon: Icon(Icons.add), onPressed: _addTemplate),
+        ],
+      ),
+      body: Container(
+        decoration: BoxDecoration(
+          image: DecorationImage(
+            image: AssetImage("assets/images/templates_background.png"),
+            fit: BoxFit.cover,
+          ),
+        ),
+        child: _templates.isEmpty
+            ? Center(child: CircularProgressIndicator())
+            : ListView.builder(
+                itemCount: _templates.length,
+                itemBuilder: (context, index) {
+                  final template = _templates[index];
+                  return Padding(
+                    padding: const EdgeInsets.all(8.0),
+                    child: Card(
+                      color: Colors.white.withOpacity(0.8),
+                      elevation: 5,
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      child: ListTile(
+                        title: Text(
+                          template.name,
+                          style: TextStyle(fontWeight: FontWeight.bold, fontSize: 18),
+                        ),
+                        subtitle: Text(
+                          'Intervals: ${_formatIntervals(template.intervals)}',
+                          style: TextStyle(fontSize: 14),
+                        ),
+                        onTap: () => _viewTemplate(template),
+                      ),
+                    ),
+                  );
+                },
+              ),
+      ),
     );
   }
 }

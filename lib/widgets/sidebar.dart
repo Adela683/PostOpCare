@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:postopcare/data/models/user.dart';
 import 'package:postopcare/screens/surgery_template_screen.dart'; // Import SurgeryScreen
 import 'package:postopcare/screens/pacient_screen.dart'; // Import PacientScreen
+
 import 'package:postopcare/screens/auth_screen.dart'; // Importă AuthScreen pentru logout
 
 class CustomDrawer extends StatelessWidget {
@@ -102,10 +103,15 @@ class CustomDrawer extends StatelessWidget {
 
   // Navighează la PacientScreen
   void _navigateToPacientScreen(BuildContext context) {
-    // Navigator.push(
-    //   context,
-    //   MaterialPageRoute(builder: (context) => PacientScreen()),
-    // );
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder:
+            (context) => 
+                PacientScreen(user: user), // Transmite userul
+  ),
+);
+
   }
 
   // Redirecționează utilizatorul la AuthScreen pentru logout
