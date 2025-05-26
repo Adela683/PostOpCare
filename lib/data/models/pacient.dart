@@ -4,14 +4,15 @@ class Pacient {
   final String id;
   final String nume;
   final int varsta;
-  final String diagnostic;
+  //final String diagnostic;
+  final String sex;
 
   // Constructor
   Pacient({
     required this.id,
     required this.nume,
     required this.varsta,
-    required this.diagnostic,
+    required this.sex,
   });
 
   // Convertire Pacient într-un Map pentru Firestore
@@ -19,7 +20,7 @@ class Pacient {
     return {
       'nume': nume,
       'varsta': varsta,
-      'diagnostic': diagnostic,
+      'sex': sex,
     };
   }
 
@@ -31,13 +32,13 @@ class Pacient {
       id: doc.id,
       nume: data['nume'] ?? '',
       varsta: data['varsta'] ?? 0,
-      diagnostic: data['diagnostic'] ?? '',
+      sex: data['sex'] ?? '',
     );
   }
 
   // Reprezentare pentru debugging
   @override
   String toString() {
-    return 'Pacient(id: $id, nume: $nume, varsta: $varsta, diagnostic: $diagnostic)';
+    return 'Pacient(id: $id, nume: $nume, varsta: $varsta, sex: $sex)';
   }
 }

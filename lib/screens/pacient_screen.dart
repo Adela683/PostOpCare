@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:postopcare/data/models/user.dart';
 import 'package:postopcare/data/repositories/pacient_repository.dart';
 
@@ -16,7 +17,7 @@ class _PacientScreenState extends State<PacientScreen> {
   late List<Pacient> _pacienti;
   late TextEditingController _numeController;
   late TextEditingController _varstaController;
-  late TextEditingController _diagnosticController;
+  String? _selectedSex;
 
   @override
   void initState() {
@@ -25,7 +26,6 @@ class _PacientScreenState extends State<PacientScreen> {
     _pacienti = [];
     _numeController = TextEditingController();
     _varstaController = TextEditingController();
-    _diagnosticController = TextEditingController();
     _loadPacienti();
   }
 
@@ -43,50 +43,72 @@ class _PacientScreenState extends State<PacientScreen> {
   }
 
   void _addPacientDialog() {
+    _selectedSex = null;
     showDialog(
       context: context,
       builder: (BuildContext context) {
         return AlertDialog(
           title: Text('Adaugă pacient'),
-          content: SingleChildScrollView(
-            child: Column(
-              children: [
-                TextField(
-                  controller: _numeController,
-                  decoration: InputDecoration(labelText: 'Nume'),
+          content: StatefulBuilder(
+            builder: (context, setStateDialog) {
+              return SingleChildScrollView(
+                child: Column(
+                  children: [
+                    TextField(
+                      controller: _numeController,
+                      decoration: InputDecoration(labelText: 'Nume'),
+                    ),
+                    TextField(
+                      controller: _varstaController,
+                      decoration: InputDecoration(labelText: 'Vârstă'),
+                      keyboardType: TextInputType.number,
+                      inputFormatters: [FilteringTextInputFormatter.digitsOnly],
+                    ),
+                    SizedBox(height: 10),
+                    Text('Sex:'),
+                    Wrap(
+                      spacing: 10,
+                      children: ['M', 'F'].map((value) {
+                        return ChoiceChip(
+                          label: Text(value),
+                          selected: _selectedSex == value,
+                          selectedColor: Colors.teal,
+                          labelStyle: TextStyle(
+                            color: _selectedSex == value ? Colors.white : Colors.black,
+                            fontWeight: FontWeight.bold,
+                          ),
+                          onSelected: (_) {
+                            setStateDialog(() {
+                              _selectedSex = value;
+                            });
+                          },
+                        );
+                      }).toList(),
+                    ),
+                  ],
                 ),
-                TextField(
-                  controller: _varstaController,
-                  decoration: InputDecoration(labelText: 'Vârstă'),
-                  keyboardType: TextInputType.number,
-                ),
-                TextField(
-                  controller: _diagnosticController,
-                  decoration: InputDecoration(labelText: 'Diagnostic'),
-                ),
-              ],
-            ),
+              );
+            },
           ),
           actions: [
             TextButton(
               onPressed: () {
                 final nume = _numeController.text;
                 final varsta = int.tryParse(_varstaController.text) ?? 0;
-                final diagnostic = _diagnosticController.text;
 
-                if (nume.isNotEmpty && diagnostic.isNotEmpty && varsta > 0) {
+                if (nume.isNotEmpty && _selectedSex != null && varsta > 0) {
                   final newPacient = Pacient(
                     id: '',
                     nume: nume,
                     varsta: varsta,
-                    diagnostic: diagnostic,
+                    sex: _selectedSex!,
                   );
                   _patientRepo.addPacient(newPacient).then((_) {
                     _loadPacienti();
                     Navigator.of(context).pop();
                     _numeController.clear();
                     _varstaController.clear();
-                    _diagnosticController.clear();
+                    _selectedSex = null;
                   }).catchError((e) {
                     ScaffoldMessenger.of(context).showSnackBar(
                       SnackBar(content: Text('Eroare la adăugare: $e')),
@@ -108,27 +130,50 @@ class _PacientScreenState extends State<PacientScreen> {
 
   void _viewPacientDialog(Pacient pacient) {
     TextEditingController numeCtrl = TextEditingController(text: pacient.nume);
-    TextEditingController varstaCtrl =
-        TextEditingController(text: pacient.varsta.toString());
-    TextEditingController diagnosticCtrl =
-        TextEditingController(text: pacient.diagnostic);
+    TextEditingController varstaCtrl = TextEditingController(text: pacient.varsta.toString());
+    String selectedSex = pacient.sex;
 
     showDialog(
       context: context,
       builder: (BuildContext context) {
         return AlertDialog(
           title: Text('Editează pacient'),
-          content: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              TextField(controller: numeCtrl, decoration: InputDecoration(labelText: 'Nume')),
-              TextField(
-                controller: varstaCtrl,
-                decoration: InputDecoration(labelText: 'Vârstă'),
-                keyboardType: TextInputType.number,
-              ),
-              TextField(controller: diagnosticCtrl, decoration: InputDecoration(labelText: 'Diagnostic')),
-            ],
+          content: StatefulBuilder(
+            builder: (context, setStateDialog) {
+              return Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  TextField(controller: numeCtrl, decoration: InputDecoration(labelText: 'Nume')),
+                  TextField(
+                    controller: varstaCtrl,
+                    decoration: InputDecoration(labelText: 'Vârstă'),
+                    keyboardType: TextInputType.number,
+                    inputFormatters: [FilteringTextInputFormatter.digitsOnly],
+                  ),
+                  SizedBox(height: 10),
+                  Text('Sex:'),
+                  Wrap(
+                    spacing: 10,
+                    children: ['M', 'F'].map((value) {
+                      return ChoiceChip(
+                        label: Text(value),
+                        selected: selectedSex == value,
+                        selectedColor: Colors.teal,
+                        labelStyle: TextStyle(
+                          color: selectedSex == value ? Colors.white : Colors.black,
+                          fontWeight: FontWeight.bold,
+                        ),
+                        onSelected: (_) {
+                          setStateDialog(() {
+                            selectedSex = value;
+                          });
+                        },
+                      );
+                    }).toList(),
+                  ),
+                ],
+              );
+            },
           ),
           actions: [
             TextButton(
@@ -137,7 +182,7 @@ class _PacientScreenState extends State<PacientScreen> {
                   id: pacient.id,
                   nume: numeCtrl.text,
                   varsta: int.tryParse(varstaCtrl.text) ?? pacient.varsta,
-                  diagnostic: diagnosticCtrl.text,
+                  sex: selectedSex,
                 );
                 _patientRepo.updatePacient(updatedPacient).then((_) {
                   _loadPacienti();
@@ -200,7 +245,7 @@ class _PacientScreenState extends State<PacientScreen> {
                           style: TextStyle(fontWeight: FontWeight.bold, fontSize: 18),
                         ),
                         subtitle: Text(
-                          'Vârstă: ${pacient.varsta}, Diagnostic: ${pacient.diagnostic}',
+                          'Vârstă: ${pacient.varsta}, Sex: ${pacient.sex}',
                           style: TextStyle(fontSize: 14),
                         ),
                         onTap: () => _viewPacientDialog(pacient),
