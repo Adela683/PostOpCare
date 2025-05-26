@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:intl/intl.dart';
 import 'package:postopcare/data/models/pacient.dart';
+import 'package:postopcare/data/repositories/pacient_repository/pacient_repository.dart';
 import 'package:postopcare/data/repositories/surgery_repository/surgery_repository.dart';
 
 class PacientDetailScreen extends StatefulWidget {
@@ -16,11 +18,26 @@ class PacientDetailScreen extends StatefulWidget {
 class _PacientDetailScreenState extends State<PacientDetailScreen> {
   late SurgeryRepository _surgeryRepo;
   late Future<List<Surgery>> _surgeriesFuture;
+  late PatientRepository _patientRepo;
+  late Pacient _pacient;
+
+  late TextEditingController _numeController;
+  late TextEditingController _varstaController;
+  late TextEditingController _telefonController;
+  String? _selectedSex;
 
   @override
   void initState() {
     super.initState();
-    _surgeryRepo = SurgeryRepository(userId: widget.userId, pacientId: widget.pacient.id);
+    _pacient = widget.pacient;
+    _surgeryRepo = SurgeryRepository(userId: widget.userId, pacientId: _pacient.id);
+    _patientRepo = PatientRepository(userId: widget.userId);
+
+    _numeController = TextEditingController(text: _pacient.nume);
+    _varstaController = TextEditingController(text: _pacient.varsta.toString());
+    _telefonController = TextEditingController(text: _pacient.telefon ?? '');
+    _selectedSex = _pacient.sex;
+
     _loadSurgeries();
   }
 
@@ -30,9 +47,135 @@ class _PacientDetailScreenState extends State<PacientDetailScreen> {
     });
   }
 
+  void _showEditPacientDialog() {
+    showDialog(
+      context: context,
+      builder: (context) {
+        return AlertDialog(
+          title: Text('Editează pacient'),
+          content: SingleChildScrollView(
+            child: Column(
+              children: [
+                TextField(
+                  controller: _numeController,
+                  decoration: InputDecoration(labelText: 'Nume'),
+                ),
+                TextField(
+                  controller: _varstaController,
+                  decoration: InputDecoration(labelText: 'Vârstă'),
+                  keyboardType: TextInputType.number,
+                  inputFormatters: [FilteringTextInputFormatter.digitsOnly],
+                ),
+                TextField(
+                  controller: _telefonController,
+                  decoration: InputDecoration(labelText: 'Număr de telefon'),
+                  keyboardType: TextInputType.number,
+                  inputFormatters: [FilteringTextInputFormatter.digitsOnly],
+                  maxLength: 10,
+                ),
+                SizedBox(height: 10),
+                Text('Sex:'),
+                Wrap(
+                  spacing: 10,
+                  children: ['M', 'F'].map((value) {
+                    return ChoiceChip(
+                      label: Text(value),
+                      selected: _selectedSex == value,
+                      selectedColor: Colors.teal,
+                      labelStyle: TextStyle(
+                        color: _selectedSex == value ? Colors.white : Colors.black,
+                        fontWeight: FontWeight.bold,
+                      ),
+                      onSelected: (_) {
+                        setState(() {
+                          _selectedSex = value;
+                        });
+                      },
+                    );
+                  }).toList(),
+                ),
+              ],
+            ),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () async {
+                final nume = _numeController.text.trim();
+                final varsta = int.tryParse(_varstaController.text.trim()) ?? 0;
+                final telefon = _telefonController.text.trim();
+
+                if (nume.isEmpty || _selectedSex == null || varsta <= 0 || telefon.length != 10) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(content: Text('Completează toate câmpurile corect (telefon 10 cifre).')),
+                  );
+                  return;
+                }
+
+                final updatedPacient = Pacient(
+                  id: _pacient.id,
+                  nume: nume,
+                  varsta: varsta,
+                  sex: _selectedSex!,
+                  telefon: telefon,
+                );
+
+                try {
+                  await _patientRepo.updatePacient(updatedPacient);
+                  setState(() {
+                    _pacient = updatedPacient;
+                  });
+                  Navigator.of(context).pop();
+                } catch (e) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(content: Text('Eroare la actualizare: $e')),
+                  );
+                }
+              },
+              child: Text('Salvează'),
+            ),
+            TextButton(
+              onPressed: () => Navigator.of(context).pop(),
+              child: Text('Anulează'),
+            ),
+          ],
+        );
+      },
+    );
+  }
+
+  void _showDeleteConfirmDialog() {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: Text('Confirmare ștergere'),
+        content: Text('Sigur vrei să ștergi pacientul ${_pacient.nume}?'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(),
+            child: Text('Anulează'),
+          ),
+          TextButton(
+            onPressed: () async {
+              try {
+                await _patientRepo.deletePacient(_pacient.id);
+                Navigator.of(context).pop(); // închide dialogul
+                Navigator.of(context).pop(true); // închide ecranul detaliu
+              } catch (e) {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  SnackBar(content: Text('Eroare la ștergere: $e')),
+                );
+              }
+            },
+            child: Text('Șterge', style: TextStyle(color: Colors.red)),
+          ),
+        ],
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
-    final pacient = widget.pacient;
+    final pacient = _pacient;
 
     return Scaffold(
       extendBodyBehindAppBar: true,
@@ -43,23 +186,18 @@ class _PacientDetailScreenState extends State<PacientDetailScreen> {
         actions: [
           IconButton(
             icon: Icon(Icons.edit, color: Colors.white),
-            onPressed: () {
-              // TODO: edit pacient
-            },
+            onPressed: _showEditPacientDialog,
           ),
           IconButton(
             icon: Icon(Icons.delete, color: Colors.white),
-            onPressed: () {
-              // TODO: delete pacient
-            },
+            onPressed: _showDeleteConfirmDialog,
           ),
         ],
       ),
       body: Column(
         children: [
-          // Sectiune sus cu inaltime mai mare - fundal imagine + gradient + detalii pacient
           Container(
-            height: 240, // inaltime crescuta pentru telefon
+            height: 200,
             width: double.infinity,
             decoration: BoxDecoration(
               image: DecorationImage(
@@ -78,7 +216,7 @@ class _PacientDetailScreenState extends State<PacientDetailScreen> {
                   end: Alignment.bottomCenter,
                 ),
               ),
-              padding: const EdgeInsets.fromLTRB(24, 80, 24, 16), // padding ajustat jos
+              padding: const EdgeInsets.fromLTRB(24, 80, 24, 24),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
@@ -106,26 +244,21 @@ class _PacientDetailScreenState extends State<PacientDetailScreen> {
                     ],
                   ),
                   SizedBox(height: 8),
-                  if (pacient.telefon != null && pacient.telefon!.isNotEmpty)
-                    Row(
-                      children: [
-                        Icon(Icons.phone, color: Colors.white, size: 20),
-                        SizedBox(width: 8),
-                        Flexible(
-                          child: Text(
-                            pacient.telefon!,
-                            style: TextStyle(fontSize: 18, color: Colors.white),
-                            overflow: TextOverflow.ellipsis,
-                          ),
-                        ),
-                      ],
-                    ),
+                  Row(
+                    children: [
+                      Icon(Icons.phone, color: Colors.white, size: 20),
+                      SizedBox(width: 6),
+                      Text(
+                        pacient.telefon ?? '',
+                        style: TextStyle(fontSize: 18, color: Colors.white),
+                      ),
+                    ],
+                  ),
                 ],
               ),
             ),
           ),
 
-          // Sectiune jos - alb, colturi rotunjite sus, continut lista operatii
           Expanded(
             child: Container(
               width: double.infinity,
@@ -140,7 +273,6 @@ class _PacientDetailScreenState extends State<PacientDetailScreen> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  // Titlu + buton + intr-un rand
                   Row(
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
@@ -166,7 +298,6 @@ class _PacientDetailScreenState extends State<PacientDetailScreen> {
                   ),
                   SizedBox(height: 12),
 
-                  // Lista operatii
                   Expanded(
                     child: FutureBuilder<List<Surgery>>(
                       future: _surgeriesFuture,
