@@ -8,46 +8,47 @@ class PatientRepository {
 
   PatientRepository({required String userId}) : _userId = userId;
 
-  // Colecția de pacienți a utilizatorului curent
-  CollectionReference get _pacientsCollection {
+  CollectionReference<Map<String, dynamic>> get _patientsCollection {
     return _firestore
         .collection('users')
         .doc(_userId)
         .collection('pacients');
   }
 
-  // Adăugare pacient
   Future<void> addPacient(Pacient pacient) async {
     try {
-      await _pacientsCollection.add(pacient.toMap());
+      await _patientsCollection.add(pacient.toMap());
     } catch (e) {
       throw Exception('Failed to add pacient: $e');
     }
   }
 
-  // Obține toți pacienții
   Future<List<Pacient>> getAllPacients() async {
     try {
-      final snapshot = await _pacientsCollection.get();
-      return snapshot.docs.map((doc) => Pacient.fromFirestore(doc)).toList();
+      final snapshot = await _patientsCollection.get();
+      return snapshot.docs
+          .map((doc) {
+            final data = doc.data();
+            data['id'] = doc.id; // asigură id-ul documentului
+            return Pacient.fromMap(data);
+          })
+          .toList();
     } catch (e) {
-      throw Exception('Failed to load pacients: $e');
+      throw Exception('Failed to get patients: $e');
     }
   }
 
-  // Actualizare pacient
   Future<void> updatePacient(Pacient pacient) async {
     try {
-      await _pacientsCollection.doc(pacient.id).update(pacient.toMap());
+      await _patientsCollection.doc(pacient.id).update(pacient.toMap());
     } catch (e) {
       throw Exception('Failed to update pacient: $e');
     }
   }
 
-  // Ștergere pacient
-  Future<void> deletePacient(String pacientId) async {
+  Future<void> deletePacient(String id) async {
     try {
-      await _pacientsCollection.doc(pacientId).delete();
+      await _patientsCollection.doc(id).delete();
     } catch (e) {
       throw Exception('Failed to delete pacient: $e');
     }

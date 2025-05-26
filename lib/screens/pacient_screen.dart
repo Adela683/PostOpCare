@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:postopcare/data/models/user.dart';
-import 'package:postopcare/data/repositories/pacient_repository.dart';
+import 'package:postopcare/data/models/pacient.dart';
+import 'package:postopcare/data/repositories/pacient_repository/pacient_repository.dart';
+import 'package:postopcare/screens/pacient_details_screen.dart';
 
 class PacientScreen extends StatefulWidget {
   final AppUser user;
@@ -15,18 +17,38 @@ class PacientScreen extends StatefulWidget {
 class _PacientScreenState extends State<PacientScreen> {
   late PatientRepository _patientRepo;
   late List<Pacient> _pacienti;
+  late List<Pacient> _filteredPacienti;
+  late TextEditingController _searchController;
   late TextEditingController _numeController;
   late TextEditingController _varstaController;
+  late TextEditingController _telefonController;  // nou
   String? _selectedSex;
+  bool _isSearching = false;
 
   @override
   void initState() {
     super.initState();
     _patientRepo = PatientRepository(userId: widget.user.id!);
     _pacienti = [];
+    _filteredPacienti = [];
+    _searchController = TextEditingController();
     _numeController = TextEditingController();
     _varstaController = TextEditingController();
+    _telefonController = TextEditingController(); // nou
     _loadPacienti();
+
+    _searchController.addListener(() {
+      final query = _searchController.text.toLowerCase();
+      setState(() {
+        if (query.isEmpty) {
+          _filteredPacienti = _pacienti;
+        } else {
+          _filteredPacienti = _pacienti
+              .where((p) => p.nume.toLowerCase().startsWith(query))
+              .toList();
+        }
+      });
+    });
   }
 
   Future<void> _loadPacienti() async {
@@ -34,6 +56,7 @@ class _PacientScreenState extends State<PacientScreen> {
       final pacients = await _patientRepo.getAllPacients();
       setState(() {
         _pacienti = pacients;
+        _filteredPacienti = pacients;
       });
     } catch (e) {
       ScaffoldMessenger.of(context).showSnackBar(
@@ -44,6 +67,7 @@ class _PacientScreenState extends State<PacientScreen> {
 
   void _addPacientDialog() {
     _selectedSex = null;
+    _telefonController.clear();
     showDialog(
       context: context,
       builder: (BuildContext context) {
@@ -65,6 +89,17 @@ class _PacientScreenState extends State<PacientScreen> {
                       inputFormatters: [FilteringTextInputFormatter.digitsOnly],
                     ),
                     SizedBox(height: 10),
+                    TextField(
+                      controller: _telefonController,
+                      decoration: InputDecoration(
+                        labelText: 'Număr de telefon',
+                        hintText: 'Ex: 0712345678',
+                      ),
+                      keyboardType: TextInputType.number,
+                      inputFormatters: [FilteringTextInputFormatter.digitsOnly],
+                      maxLength: 10,
+                    ),
+                    SizedBox(height: 10),
                     Text('Sex:'),
                     Wrap(
                       spacing: 10,
@@ -74,7 +109,8 @@ class _PacientScreenState extends State<PacientScreen> {
                           selected: _selectedSex == value,
                           selectedColor: Colors.teal,
                           labelStyle: TextStyle(
-                            color: _selectedSex == value ? Colors.white : Colors.black,
+                            color:
+                                _selectedSex == value ? Colors.white : Colors.black,
                             fontWeight: FontWeight.bold,
                           ),
                           onSelected: (_) {
@@ -93,107 +129,40 @@ class _PacientScreenState extends State<PacientScreen> {
           actions: [
             TextButton(
               onPressed: () {
-                final nume = _numeController.text;
-                final varsta = int.tryParse(_varstaController.text) ?? 0;
+                final nume = _numeController.text.trim();
+                final varsta = int.tryParse(_varstaController.text.trim()) ?? 0;
+                final telefon = _telefonController.text.trim();
 
-                if (nume.isNotEmpty && _selectedSex != null && varsta > 0) {
+                if (nume.isNotEmpty && _selectedSex != null && varsta > 0 && telefon.length == 10) {
                   final newPacient = Pacient(
                     id: '',
                     nume: nume,
                     varsta: varsta,
                     sex: _selectedSex!,
+                    telefon: telefon,
                   );
-                  _patientRepo.addPacient(newPacient).then((_) {
-                    _loadPacienti();
-                    Navigator.of(context).pop();
-                    _numeController.clear();
-                    _varstaController.clear();
-                    _selectedSex = null;
-                  }).catchError((e) {
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      SnackBar(content: Text('Eroare la adăugare: $e')),
-                    );
-                  });
+                  _patientRepo
+                      .addPacient(newPacient)
+                      .then((_) {
+                        _loadPacienti();
+                        Navigator.of(context).pop();
+                        _numeController.clear();
+                        _varstaController.clear();
+                        _telefonController.clear();
+                        _selectedSex = null;
+                      })
+                      .catchError((e) {
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          SnackBar(content: Text('Eroare la adăugare: $e')),
+                        );
+                      });
+                } else {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(content: Text('Te rog completează toate câmpurile corect (telefon 10 cifre).')),
+                  );
                 }
               },
               child: Text('Adaugă'),
-            ),
-            TextButton(
-              onPressed: () => Navigator.of(context).pop(),
-              child: Text('Anulează'),
-            ),
-          ],
-        );
-      },
-    );
-  }
-
-  void _viewPacientDialog(Pacient pacient) {
-    TextEditingController numeCtrl = TextEditingController(text: pacient.nume);
-    TextEditingController varstaCtrl = TextEditingController(text: pacient.varsta.toString());
-    String selectedSex = pacient.sex;
-
-    showDialog(
-      context: context,
-      builder: (BuildContext context) {
-        return AlertDialog(
-          title: Text('Editează pacient'),
-          content: StatefulBuilder(
-            builder: (context, setStateDialog) {
-              return Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  TextField(controller: numeCtrl, decoration: InputDecoration(labelText: 'Nume')),
-                  TextField(
-                    controller: varstaCtrl,
-                    decoration: InputDecoration(labelText: 'Vârstă'),
-                    keyboardType: TextInputType.number,
-                    inputFormatters: [FilteringTextInputFormatter.digitsOnly],
-                  ),
-                  SizedBox(height: 10),
-                  Text('Sex:'),
-                  Wrap(
-                    spacing: 10,
-                    children: ['M', 'F'].map((value) {
-                      return ChoiceChip(
-                        label: Text(value),
-                        selected: selectedSex == value,
-                        selectedColor: Colors.teal,
-                        labelStyle: TextStyle(
-                          color: selectedSex == value ? Colors.white : Colors.black,
-                          fontWeight: FontWeight.bold,
-                        ),
-                        onSelected: (_) {
-                          setStateDialog(() {
-                            selectedSex = value;
-                          });
-                        },
-                      );
-                    }).toList(),
-                  ),
-                ],
-              );
-            },
-          ),
-          actions: [
-            TextButton(
-              onPressed: () {
-                final updatedPacient = Pacient(
-                  id: pacient.id,
-                  nume: numeCtrl.text,
-                  varsta: int.tryParse(varstaCtrl.text) ?? pacient.varsta,
-                  sex: selectedSex,
-                );
-                _patientRepo.updatePacient(updatedPacient).then((_) {
-                  _loadPacienti();
-                  Navigator.of(context).pop();
-                }).catchError((e) {
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    SnackBar(content: Text('Eroare la salvare: $e')),
-                  );
-                });
-              },
-              child: Text('Salvează'),
             ),
             TextButton(
               onPressed: () => Navigator.of(context).pop(),
@@ -209,13 +178,42 @@ class _PacientScreenState extends State<PacientScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: Text('Pacienți'),
+        title: !_isSearching
+            ? Text('Pacienți')
+            : TextField(
+                controller: _searchController,
+                decoration: InputDecoration(
+                  hintText: 'Caută pacient...',
+                  border: InputBorder.none,
+                  hintStyle: TextStyle(color: Colors.white54),
+                ),
+                style: TextStyle(color: Colors.white, fontSize: 18),
+                autofocus: true,
+              ),
         backgroundColor: const Color.fromARGB(255, 10, 221, 221),
         actions: [
-          IconButton(
-            icon: Icon(Icons.add),
-            onPressed: _addPacientDialog,
-          ),
+          if (!_isSearching)
+            IconButton(
+              icon: Icon(Icons.search),
+              onPressed: () {
+                setState(() {
+                  _isSearching = true;
+                  _filteredPacienti = _pacienti;
+                  _searchController.clear();
+                });
+              },
+            ),
+          if (_isSearching)
+            IconButton(
+              icon: Icon(Icons.close),
+              onPressed: () {
+                setState(() {
+                  _isSearching = false;
+                  _searchController.clear();
+                });
+              },
+            ),
+          IconButton(icon: Icon(Icons.add), onPressed: _addPacientDialog),
         ],
       ),
       body: Container(
@@ -228,9 +226,9 @@ class _PacientScreenState extends State<PacientScreen> {
         child: _pacienti.isEmpty
             ? Center(child: CircularProgressIndicator())
             : ListView.builder(
-                itemCount: _pacienti.length,
+                itemCount: _isSearching ? _filteredPacienti.length : _pacienti.length,
                 itemBuilder: (context, index) {
-                  final pacient = _pacienti[index];
+                  final pacient = _isSearching ? _filteredPacienti[index] : _pacienti[index];
                   return Padding(
                     padding: const EdgeInsets.all(8.0),
                     child: Card(
@@ -242,19 +240,25 @@ class _PacientScreenState extends State<PacientScreen> {
                       child: ListTile(
                         title: Text(
                           pacient.nume,
-                          style: TextStyle(fontWeight: FontWeight.bold, fontSize: 18),
+                          style: TextStyle(
+                            fontWeight: FontWeight.bold,
+                            fontSize: 18,
+                          ),
                         ),
                         subtitle: Text(
                           'Vârstă: ${pacient.varsta}, Sex: ${pacient.sex}',
                           style: TextStyle(fontSize: 14),
                         ),
-                        onTap: () => _viewPacientDialog(pacient),
-                        trailing: IconButton(
-                          icon: Icon(Icons.delete),
-                          onPressed: () {
-                            _patientRepo.deletePacient(pacient.id).then((_) => _loadPacienti());
-                          },
-                        ),
+                        onTap: () {
+                          Navigator.of(context).push(
+                            MaterialPageRoute(
+                              builder: (context) => PacientDetailScreen(
+                                userId: widget.user.id!,
+                                pacient: pacient,
+                              ),
+                            ),
+                          );
+                        },
                       ),
                     ),
                   );
