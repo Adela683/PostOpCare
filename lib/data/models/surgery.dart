@@ -6,6 +6,7 @@ class Surgery {
   final DateTime dataEfectuarii;
   final String templateId;
   final List<Appointment> appointments;
+  final List<String> photosUrls; // lista URL poze
 
   Surgery({
     required this.id,
@@ -13,6 +14,7 @@ class Surgery {
     required this.dataEfectuarii,
     required this.templateId,
     this.appointments = const [],
+    this.photosUrls = const [],
   });
 
   Map<String, dynamic> toMap() {
@@ -22,13 +24,24 @@ class Surgery {
       'dataEfectuarii': dataEfectuarii.toIso8601String(),
       'templateId': templateId,
       // Nu stocăm appointments aici, ele sunt stocate separat în subcolecția appointments
+      'photosUrls': photosUrls, // salvăm lista URL poze în Firestore
     };
   }
 
   factory Surgery.fromMap(
     Map<String, dynamic> map, {
     List<Appointment>? appointments,
+    List<String>? photosUrls,
   }) {
+    // Dacă photosUrls nu e trecut explicit, încearcă să-l extragă din map
+    List<String> extractedPhotosUrls = [];
+    if (photosUrls != null) {
+      extractedPhotosUrls = photosUrls;
+    } else if (map['photosUrls'] != null && map['photosUrls'] is List) {
+      // Convertim elementele în String (în caz că Firestore întoarce dynamic)
+      extractedPhotosUrls = List<String>.from(map['photosUrls']);
+    }
+
     return Surgery(
       id: map['id'] ?? '',
       nume: map['nume'] ?? '',
@@ -37,6 +50,7 @@ class Surgery {
       ),
       templateId: map['templateId'] ?? '',
       appointments: appointments ?? [],
+      photosUrls: extractedPhotosUrls,
     );
   }
 }

@@ -136,109 +136,123 @@ class _PacientDetailScreenState extends State<PacientDetailScreen> {
   }
 
   void _showEditPacientDialog() {
+    String? selectedSex = _selectedSex; // variabilă locală pentru dialog
+
     showDialog(
       context: context,
       builder: (context) {
-        return AlertDialog(
-          title: Text('Editează pacient'),
-          content: SingleChildScrollView(
-            child: Column(
-              children: [
-                TextField(
-                  controller: _numeController,
-                  decoration: InputDecoration(labelText: 'Nume'),
-                ),
-                TextField(
-                  controller: _varstaController,
-                  decoration: InputDecoration(labelText: 'Vârstă'),
-                  keyboardType: TextInputType.number,
-                  inputFormatters: [FilteringTextInputFormatter.digitsOnly],
-                ),
-                TextField(
-                  controller: _telefonController,
-                  decoration: InputDecoration(labelText: 'Număr de telefon'),
-                  keyboardType: TextInputType.number,
-                  inputFormatters: [FilteringTextInputFormatter.digitsOnly],
-                  maxLength: 10,
-                ),
-                SizedBox(height: 10),
-                Text('Sex:'),
-                Wrap(
-                  spacing: 10,
-                  children:
-                      ['M', 'F']
-                          .map(
-                            (value) => ChoiceChip(
+        return StatefulBuilder(
+          builder: (context, setStateDialog) {
+            return AlertDialog(
+              title: Text('Editează pacient'),
+              content: SingleChildScrollView(
+                child: Column(
+                  children: [
+                    TextField(
+                      controller: _numeController,
+                      decoration: InputDecoration(labelText: 'Nume'),
+                    ),
+                    TextField(
+                      controller: _varstaController,
+                      decoration: InputDecoration(labelText: 'Vârstă'),
+                      keyboardType: TextInputType.number,
+                      inputFormatters: [FilteringTextInputFormatter.digitsOnly],
+                    ),
+                    TextField(
+                      controller: _telefonController,
+                      decoration: InputDecoration(
+                        labelText: 'Număr de telefon',
+                      ),
+                      keyboardType: TextInputType.number,
+                      inputFormatters: [FilteringTextInputFormatter.digitsOnly],
+                      maxLength: 10,
+                    ),
+                    SizedBox(height: 10),
+                    Text('Sex:'),
+                    Wrap(
+                      spacing: 10,
+                      children:
+                          ['M', 'F'].map((value) {
+                            final isSelected = selectedSex == value;
+                            return ChoiceChip(
                               label: Text(value),
-                              selected: _selectedSex == value,
+                              selected: isSelected,
                               selectedColor: Colors.teal,
+                              backgroundColor: Colors.grey.shade200,
                               labelStyle: TextStyle(
-                                color:
-                                    _selectedSex == value
-                                        ? Colors.white
-                                        : Colors.black,
+                                color: isSelected ? Colors.white : Colors.black,
                                 fontWeight: FontWeight.bold,
                               ),
-                              onSelected: (_) {
-                                setState(() {
-                                  _selectedSex = value;
-                                });
+                              onSelected: (selected) {
+                                if (selected) {
+                                  setStateDialog(() {
+                                    selectedSex = value;
+                                  });
+                                }
                               },
+                            );
+                          }).toList(),
+                    ),
+                  ],
+                ),
+              ),
+              actions: [
+                TextButton(
+                  onPressed: () => Navigator.of(context).pop(), // anulare
+                  child: Text('Anulează'),
+                ),
+                TextButton(
+                  onPressed: () {
+                    final nume = _numeController.text.trim();
+                    final varsta =
+                        int.tryParse(_varstaController.text.trim()) ?? 0;
+                    final telefon = _telefonController.text.trim();
+
+                    if (nume.isEmpty ||
+                        selectedSex == null ||
+                        varsta <= 0 ||
+                        telefon.length != 10) {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        SnackBar(
+                          content: Text(
+                            'Completează toate câmpurile corect (telefon 10 cifre).',
+                          ),
+                        ),
+                      );
+                      return;
+                    }
+
+                    final updatedPacient = Pacient(
+                      id: _pacient.id,
+                      nume: nume,
+                      varsta: varsta,
+                      sex: selectedSex!,
+                      telefon: telefon,
+                    );
+
+                    _patientRepo
+                        .updatePacient(updatedPacient)
+                        .then((_) {
+                          setState(() {
+                            _pacient = updatedPacient;
+                            _selectedSex =
+                                selectedSex; // actualizează starea părinte
+                          });
+                          Navigator.of(context).pop();
+                        })
+                        .catchError((e) {
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            SnackBar(
+                              content: Text('Eroare la actualizare: $e'),
                             ),
-                          )
-                          .toList(),
+                          );
+                        });
+                  },
+                  child: Text('Salvează'),
                 ),
               ],
-            ),
-          ),
-          actions: [
-            TextButton(
-              onPressed: () async {
-                final nume = _numeController.text.trim();
-                final varsta = int.tryParse(_varstaController.text.trim()) ?? 0;
-                final telefon = _telefonController.text.trim();
-
-                if (nume.isEmpty ||
-                    _selectedSex == null ||
-                    varsta <= 0 ||
-                    telefon.length != 10) {
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    SnackBar(
-                      content: Text(
-                        'Completează toate câmpurile corect (telefon 10 cifre).',
-                      ),
-                    ),
-                  );
-                  return;
-                }
-
-                final updatedPacient = Pacient(
-                  id: _pacient.id,
-                  nume: nume,
-                  varsta: varsta,
-                  sex: _selectedSex!,
-                  telefon: telefon,
-                );
-
-                try {
-                  await _patientRepo.updatePacient(updatedPacient);
-                  setState(() {
-                    _pacient = updatedPacient;
-                  });
-                  Navigator.of(context).pop(true);
-                } catch (e) {
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    SnackBar(content: Text('Eroare la actualizare: $e')),
-                  );
-                }
-              },
-              child: Text('Salvează'),
-            ),
-            TextButton(
-              onPressed: () => Navigator.of(context).pop(false),
-              child: Text('Anulează'),
-            ),
-          ],
+            );
+          },
         );
       },
     );

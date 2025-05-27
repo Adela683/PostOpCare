@@ -40,7 +40,17 @@ class SurgeryRepository {
         // Preluăm controalele asociate
         final appointments = await appointmentRepo.getAppointments();
 
-        final surgery = Surgery.fromMap(data, appointments: appointments);
+        // Citim lista de poze din Firestore (dacă există)
+        final photosUrls = <String>[];
+        if (data.containsKey('photosUrls') && data['photosUrls'] is List) {
+          photosUrls.addAll(List<String>.from(data['photosUrls']));
+        }
+
+        final surgery = Surgery.fromMap(
+          data,
+          appointments: appointments,
+          photosUrls: photosUrls,
+        );
         surgeries.add(surgery);
       }
       return surgeries;

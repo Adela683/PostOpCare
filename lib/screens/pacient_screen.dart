@@ -303,7 +303,6 @@ class _PacientScreenState extends State<PacientScreen> with RouteAware {
                               ),
                             );
                             print('Result from PacientDetailScreen: $result');
-                            // Optional: refresh-ul este acum în didPopNext, deci nu mai e nevoie aici
                           },
                         ),
                       ),

@@ -1,78 +1,14 @@
-// import 'package:flutter/material.dart';
-// import 'package:postopcare/widgets/calendar.dart';
-// import 'package:postopcare/data/models/user.dart';
-// import 'package:postopcare/widgets/sidebar.dart'; // Import CustomDrawer
-
-// class MainScreen extends StatelessWidget {
-//   final AppUser user;
-
-//   // Crearea unui GlobalKey pentru a controla Scaffold-ul
-//   final GlobalKey<ScaffoldState> _scaffoldKey = GlobalKey<ScaffoldState>();
-
-//   // Constructor pentru a primi utilizatorul
-//   MainScreen({super.key, required this.user});
-
-//   @override
-//   Widget build(BuildContext context) {
-//     return Scaffold(
-//       key: _scaffoldKey, // Setăm key-ul pentru Scaffold
-//       appBar: AppBar(
-//         // title in the center
-//         title: Center(
-//           child: Text(
-//             'PostopCare',
-//             style: TextStyle(
-//               fontSize: 24,
-//               fontWeight: FontWeight.bold,
-//               color: Colors.white,
-//             ),
-//           ),
-//         ),
-//         backgroundColor: const Color.fromARGB(255, 10, 221, 221),
-//         // Elimină butonul implicit din stânga care se folosește pentru back
-//         automaticallyImplyLeading: false,
-//         // Mută butonul de meniul de tip hamburger în partea stângă
-//         leading: IconButton(
-//           color: Colors.white,
-//           icon: const Icon(Icons.menu),
-//           onPressed: () {
-//             // Deschide Drawer-ul (Sidebar-ul)
-//             _scaffoldKey.currentState?.openDrawer();
-//           },
-//         ),
-//       ),
-//       body: Column(
-//         crossAxisAlignment: CrossAxisAlignment.start,
-//         children: [
-//           Padding(
-//             padding: const EdgeInsets.all(16.0),
-//             child: Text(
-//               'Today\'s Schedule:',
-//               style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
-//             ),
-//           ),
-//           // Calendarul pentru selectarea zilei
-//           const Expanded(
-//             child: CalendarWidget(), // Widgetul Calendarului
-//           ),
-//         ],
-//       ),
-//       // Sidebar (Drawer) folosind CustomDrawer
-//       drawer: CustomDrawer(user: user),
-//     );
-//   }
-// }
-
 import 'package:flutter/material.dart';
+import 'package:intl/intl.dart';
 import 'package:postopcare/widgets/calendar.dart';
 import 'package:postopcare/data/models/user.dart';
-import 'package:postopcare/widgets/sidebar.dart'; // Import CustomDrawer
-import 'package:intl/intl.dart'; // Import pentru DateFormat
+import 'package:postopcare/widgets/sidebar.dart';
+import 'package:postopcare/data/models/appointment.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
 
 class MainScreen extends StatefulWidget {
   final AppUser user;
 
-  // Constructor pentru a primi utilizatorul
   MainScreen({super.key, required this.user});
 
   @override
@@ -81,36 +17,136 @@ class MainScreen extends StatefulWidget {
 
 class _MainScreenState extends State<MainScreen> {
   List<Map<String, dynamic>> programari = [];
-  final GlobalKey<ScaffoldState> _scaffoldKey =
-      GlobalKey<ScaffoldState>(); // Definirea key-ului pentru Scaffold
+  final GlobalKey<ScaffoldState> _scaffoldKey = GlobalKey<ScaffoldState>();
+  bool _isLoading = true; // variabilă pentru stare loading
 
-  // Funcția care va aduce programările din Firebase
+  @override
+  void initState() {
+    super.initState();
+    final today = DateTime.now();
+    _fetchProgramariForDay(today);
+  }
+
   Future<void> _fetchProgramariForDay(DateTime selectedDay) async {
-    // Simulăm datele pentru a face testarea
     setState(() {
-      programari = [
-        {
-          'tip_operatie': 'Consultație generală',
-          'date': selectedDay.add(Duration(hours: 8)),
-        },
-        {
-          'tip_operatie': 'Examinare post-operatorie',
-          'date': selectedDay.add(Duration(hours: 10)),
-        },
-        {
-          'tip_operatie': 'Întâlnire cu medicul de specialitate',
-          'date': selectedDay.add(Duration(hours: 12)),
-        },
-      ];
+      programari = [];
+      _isLoading = true; // start loading
     });
+
+    if (widget.user.id == null) {
+      print('User ID is null!');
+      setState(() {
+        _isLoading = false;
+      });
+      return;
+    }
+
+    try {
+      final allAppointments = await _getAllAppointmentsForUser(widget.user.id!);
+
+      final filtered =
+          allAppointments.where((appointment) {
+            final date = appointment.date;
+            return date.year == selectedDay.year &&
+                date.month == selectedDay.month &&
+                date.day == selectedDay.day;
+          }).toList();
+
+      final programariForDay =
+          filtered.map((appointment) {
+            return {
+              'tip_operatie': appointment.surgeryName,
+              'date': appointment.date,
+              'time': appointment.time,
+              'nume_pacient':
+                  appointment.patientName ?? 'Nume pacient necunoscut',
+            };
+          }).toList();
+
+      setState(() {
+        programari = programariForDay;
+        _isLoading = false; // loading gata
+      });
+    } catch (e) {
+      print('Eroare la încărcarea programărilor: $e');
+      setState(() {
+        _isLoading = false;
+      });
+    }
+  }
+
+  Future<List<Appointment>> _getAllAppointmentsForUser(String userId) async {
+    final firestore = FirebaseFirestore.instance;
+    List<Appointment> allAppointments = [];
+
+    try {
+      final pacientSnapshot =
+          await firestore
+              .collection('users')
+              .doc(userId)
+              .collection('pacients')
+              .get();
+
+      for (final pacientDoc in pacientSnapshot.docs) {
+        final pacientId = pacientDoc.id;
+        final pacientData = pacientDoc.data();
+        final pacientName = pacientData['nume'] ?? 'Nume pacient necunoscut';
+
+        final surgeriesSnapshot =
+            await firestore
+                .collection('users')
+                .doc(userId)
+                .collection('pacients')
+                .doc(pacientId)
+                .collection('surgeries')
+                .get();
+
+        for (final surgeryDoc in surgeriesSnapshot.docs) {
+          final surgeryData = surgeryDoc.data();
+          final surgeryName = surgeryData['nume'] ?? 'Operație';
+
+          final appointmentsSnapshot =
+              await firestore
+                  .collection('users')
+                  .doc(userId)
+                  .collection('pacients')
+                  .doc(pacientId)
+                  .collection('surgeries')
+                  .doc(surgeryDoc.id)
+                  .collection('appointments')
+                  .get();
+
+          for (final appointmentDoc in appointmentsSnapshot.docs) {
+            final data = appointmentDoc.data();
+            final timestamp = data['date'] as Timestamp?;
+            final date = timestamp?.toDate() ?? DateTime.now();
+
+            final time = data['time'] ?? '';
+
+            allAppointments.add(
+              Appointment(
+                id: appointmentDoc.id,
+                date: date,
+                time: time,
+                surgeryName: surgeryName,
+                patientName: pacientName,
+              ),
+            );
+          }
+        }
+      }
+      return allAppointments;
+    } catch (e) {
+      print('Error fetching all appointments for user: $e');
+      return [];
+    }
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      key: _scaffoldKey, // Setăm key-ul pentru Scaffold
+      key: _scaffoldKey,
       appBar: AppBar(
-        // Title în centru
         title: Center(
           child: Text(
             'PostopCare',
@@ -121,52 +157,50 @@ class _MainScreenState extends State<MainScreen> {
             ),
           ),
         ),
-        backgroundColor: const Color.fromARGB(255, 10, 221, 221),
-        // Elimină butonul implicit din stânga care se folosește pentru back
+        backgroundColor: Color.fromARGB(255, 10, 221, 221),
         automaticallyImplyLeading: false,
-        // Mută butonul de meniul de tip hamburger în partea stângă
         leading: IconButton(
           color: Colors.white,
-          icon: const Icon(Icons.menu),
+          icon: Icon(Icons.menu),
           onPressed: () {
-            // Deschide Drawer-ul (Sidebar-ul)
             _scaffoldKey.currentState?.openDrawer();
           },
         ),
       ),
+      drawer: CustomDrawer(user: widget.user),
       body: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Padding(
             padding: const EdgeInsets.all(16.0),
             child: Text(
-              'Today\'s Schedule:',
+              "Today's Schedule:",
               style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
             ),
           ),
-          // Calendarul pentru selectarea zilei
           CalendarWidget(
             onDaySelected: (selectedDay) {
-              _fetchProgramariForDay(
-                selectedDay,
-              ); // Fetch programările pentru ziua selectată
+              _fetchProgramariForDay(selectedDay);
             },
           ),
-          // Afișează programările pentru ziua selectată
           Expanded(
             child:
-                programari.isEmpty
-                    ? Center(child: CircularProgressIndicator()) // Loading
+                _isLoading
+                    ? Center(child: CircularProgressIndicator())
+                    : programari.isEmpty
+                    ? Center(
+                      child: Text(
+                        'Nicio programare',
+                        style: TextStyle(fontSize: 18),
+                      ),
+                    )
                     : SingleChildScrollView(
-                      // Permite derularea dacă sunt prea multe programări
                       child: Column(
                         children:
                             programari.map((programare) {
-                              final dateFormat = DateFormat(
-                                'yyyy-MM-dd – HH:mm',
-                              );
+                              final dateFormat = DateFormat('yyyy-MM-dd');
                               return Card(
-                                margin: const EdgeInsets.symmetric(
+                                margin: EdgeInsets.symmetric(
                                   vertical: 8,
                                   horizontal: 16,
                                 ),
@@ -183,9 +217,7 @@ class _MainScreenState extends State<MainScreen> {
                                     ),
                                   ),
                                   subtitle: Text(
-                                    dateFormat.format(
-                                      programare['date'],
-                                    ), // Afișează data și ora
+                                    '${programare['nume_pacient']} - ${dateFormat.format(programare['date'])} - ${programare['time']}',
                                     style: TextStyle(fontSize: 14),
                                   ),
                                 ),
@@ -196,8 +228,6 @@ class _MainScreenState extends State<MainScreen> {
           ),
         ],
       ),
-      // Sidebar (Drawer) folosind CustomDrawer
-      drawer: CustomDrawer(user: widget.user),
     );
   }
 }

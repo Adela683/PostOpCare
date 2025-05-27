@@ -63,6 +63,8 @@ class AppointmentRepository {
     }
   }
 
+  /// Preia toate programările de la toți pacienții și toate operațiile unui user,
+  /// adăugând și numele operației în fiecare appointment.
   static Future<List<Appointment>> getAllAppointments(String userId) async {
     final FirebaseFirestore _firestore = FirebaseFirestore.instance;
     final List<Appointment> allAppointments = [];
@@ -85,6 +87,9 @@ class AppointmentRepository {
               .get();
 
       for (var surgeryDoc in surgeriesSnapshot.docs) {
+        final surgeryData = surgeryDoc.data();
+        final surgeryName = surgeryData['nume'] ?? 'Unknown Surgery';
+
         final appointmentsSnapshot =
             await _firestore
                 .collection('users')
@@ -98,7 +103,13 @@ class AppointmentRepository {
 
         for (var appDoc in appointmentsSnapshot.docs) {
           final data = appDoc.data();
-          final appointment = Appointment.fromMap(data, appDoc.id);
+
+          // Construim appointment cu surgeryName
+          final appointment = Appointment.fromMap(
+            data,
+            appDoc.id,
+            surgeryName: surgeryName,
+          );
           allAppointments.add(appointment);
         }
       }
