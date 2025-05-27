@@ -1,9 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:intl/intl.dart';
-import 'package:postopcare/data/models/pacient.dart';
 import 'package:postopcare/data/repositories/pacient_repository/pacient_repository.dart';
 import 'package:postopcare/data/repositories/surgery_repository/surgery_repository.dart';
+import 'package:postopcare/data/repositories/surgery_templates_repository/surgery_templates_repository.dart';
+import 'package:postopcare/data/repositories/appointment_repository/appointment_repository.dart';
+import 'surgery_screen.dart'; // import pentru ecranul detaliat
 
 class PacientDetailScreen extends StatefulWidget {
   final String userId;
@@ -22,6 +24,7 @@ class PacientDetailScreen extends StatefulWidget {
 class _PacientDetailScreenState extends State<PacientDetailScreen> {
   late SurgeryRepository _surgeryRepo;
   late Future<List<Surgery>> _surgeriesFuture;
+  late SurgeryTemplateRepository _templateRepo;
   late PatientRepository _patientRepo;
   late Pacient _pacient;
 
@@ -39,6 +42,7 @@ class _PacientDetailScreenState extends State<PacientDetailScreen> {
       userId: widget.userId,
       pacientId: _pacient.id,
     );
+    _templateRepo = SurgeryTemplateRepository(userId: widget.userId);
     _patientRepo = PatientRepository(userId: widget.userId);
 
     _numeController = TextEditingController(text: _pacient.nume);
@@ -53,6 +57,82 @@ class _PacientDetailScreenState extends State<PacientDetailScreen> {
     setState(() {
       _surgeriesFuture = _surgeryRepo.getSurgeries();
     });
+  }
+
+  Future<void> _addSurgeryFromTemplate() async {
+    try {
+      final templates = await _templateRepo.getAllTemplates();
+
+      final selectedTemplate = await showDialog<SurgeryTemplate>(
+        context: context,
+        builder: (context) {
+          return AlertDialog(
+            title: Text('Selectează un template de operație'),
+            content: Container(
+              width: double.maxFinite,
+              child: ListView.builder(
+                shrinkWrap: true,
+                itemCount: templates.length,
+                itemBuilder: (context, index) {
+                  final template = templates[index];
+                  return ListTile(
+                    title: Text(template.name),
+                    onTap: () => Navigator.of(context).pop(template),
+                  );
+                },
+              ),
+            ),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.of(context).pop(null),
+                child: Text('Anulează'),
+              ),
+            ],
+          );
+        },
+      );
+
+      if (selectedTemplate == null) return;
+
+      final selectedDate = await showDatePicker(
+        context: context,
+        initialDate: DateTime.now(),
+        firstDate: DateTime(2000),
+        lastDate: DateTime(2100),
+      );
+
+      if (selectedDate == null) return;
+
+      final surgery = Surgery(
+        id: '',
+        nume: selectedTemplate.name,
+        dataEfectuarii: selectedDate,
+        templateId: selectedTemplate.id,
+        appointments: [],
+      );
+
+      final docRef = await _surgeryRepo.addSurgeryReturnDocRef(surgery);
+
+      final appointmentRepo = AppointmentRepository(
+        userId: widget.userId,
+        pacientId: _pacient.id,
+        surgeryId: docRef.id,
+      );
+
+      for (final weekInterval in selectedTemplate.intervals) {
+        final estimatedDate = selectedDate.add(
+          Duration(days: weekInterval * 7),
+        );
+        final appointment = Appointment(id: '', date: estimatedDate, time: '');
+        await appointmentRepo.addAppointment(appointment);
+      }
+
+      _loadSurgeries();
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Eroare la adăugarea operației: $e')),
+      );
+    }
   }
 
   void _showEditPacientDialog() {
@@ -86,25 +166,27 @@ class _PacientDetailScreenState extends State<PacientDetailScreen> {
                 Wrap(
                   spacing: 10,
                   children:
-                      ['M', 'F'].map((value) {
-                        return ChoiceChip(
-                          label: Text(value),
-                          selected: _selectedSex == value,
-                          selectedColor: Colors.teal,
-                          labelStyle: TextStyle(
-                            color:
-                                _selectedSex == value
-                                    ? Colors.white
-                                    : Colors.black,
-                            fontWeight: FontWeight.bold,
-                          ),
-                          onSelected: (_) {
-                            setState(() {
-                              _selectedSex = value;
-                            });
-                          },
-                        );
-                      }).toList(),
+                      ['M', 'F']
+                          .map(
+                            (value) => ChoiceChip(
+                              label: Text(value),
+                              selected: _selectedSex == value,
+                              selectedColor: Colors.teal,
+                              labelStyle: TextStyle(
+                                color:
+                                    _selectedSex == value
+                                        ? Colors.white
+                                        : Colors.black,
+                                fontWeight: FontWeight.bold,
+                              ),
+                              onSelected: (_) {
+                                setState(() {
+                                  _selectedSex = value;
+                                });
+                              },
+                            ),
+                          )
+                          .toList(),
                 ),
               ],
             ),
@@ -313,9 +395,7 @@ class _PacientDetailScreenState extends State<PacientDetailScreen> {
                         shape: CircleBorder(),
                         child: IconButton(
                           icon: Icon(Icons.add, color: Colors.white),
-                          onPressed: () {
-                            // TODO: Adăugare operație
-                          },
+                          onPressed: _addSurgeryFromTemplate,
                         ),
                       ),
                     ],
@@ -378,8 +458,22 @@ class _PacientDetailScreenState extends State<PacientDetailScreen> {
                                   style: TextStyle(fontWeight: FontWeight.bold),
                                 ),
                                 subtitle: Text('Data: $formattedDate'),
-                                onTap: () {
-                                  // TODO: Navigare către ecranul detaliat al operației
+                                onTap: () async {
+                                  final result = await Navigator.of(
+                                    context,
+                                  ).push(
+                                    MaterialPageRoute(
+                                      builder:
+                                          (context) => SurgeryDetailScreen(
+                                            userId: widget.userId,
+                                            pacientId: _pacient.id,
+                                            surgery: surgery,
+                                          ),
+                                    ),
+                                  );
+                                  if (result == true) {
+                                    _loadSurgeries();
+                                  }
                                 },
                               ),
                             );
