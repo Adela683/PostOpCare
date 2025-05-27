@@ -1,9 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:postopcare/data/models/user.dart';
-import 'package:postopcare/data/models/pacient.dart';
 import 'package:postopcare/data/repositories/pacient_repository/pacient_repository.dart';
 import 'package:postopcare/screens/pacient_details_screen.dart';
+import '../route_observer.dart'; // importă observer-ul global
 
 class PacientScreen extends StatefulWidget {
   final AppUser user;
@@ -14,14 +14,14 @@ class PacientScreen extends StatefulWidget {
   State<PacientScreen> createState() => _PacientScreenState();
 }
 
-class _PacientScreenState extends State<PacientScreen> {
+class _PacientScreenState extends State<PacientScreen> with RouteAware {
   late PatientRepository _patientRepo;
   late List<Pacient> _pacienti;
   late List<Pacient> _filteredPacienti;
   late TextEditingController _searchController;
   late TextEditingController _numeController;
   late TextEditingController _varstaController;
-  late TextEditingController _telefonController;  // nou
+  late TextEditingController _telefonController;
   String? _selectedSex;
   bool _isSearching = false;
 
@@ -34,7 +34,7 @@ class _PacientScreenState extends State<PacientScreen> {
     _searchController = TextEditingController();
     _numeController = TextEditingController();
     _varstaController = TextEditingController();
-    _telefonController = TextEditingController(); // nou
+    _telefonController = TextEditingController();
     _loadPacienti();
 
     _searchController.addListener(() {
@@ -43,12 +43,35 @@ class _PacientScreenState extends State<PacientScreen> {
         if (query.isEmpty) {
           _filteredPacienti = _pacienti;
         } else {
-          _filteredPacienti = _pacienti
-              .where((p) => p.nume.toLowerCase().startsWith(query))
-              .toList();
+          _filteredPacienti =
+              _pacienti
+                  .where((p) => p.nume.toLowerCase().startsWith(query))
+                  .toList();
         }
       });
     });
+  }
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    routeObserver.subscribe(this, ModalRoute.of(context)!);
+  }
+
+  @override
+  void dispose() {
+    routeObserver.unsubscribe(this);
+    _searchController.dispose();
+    _numeController.dispose();
+    _varstaController.dispose();
+    _telefonController.dispose();
+    super.dispose();
+  }
+
+  // Apelat când revii pe acest ecran (de ex după ce ai navigat în detalii)
+  @override
+  void didPopNext() {
+    _loadPacienti();
   }
 
   Future<void> _loadPacienti() async {
@@ -59,9 +82,11 @@ class _PacientScreenState extends State<PacientScreen> {
         _filteredPacienti = pacients;
       });
     } catch (e) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Eroare la încărcarea pacienților: $e')),
-      );
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Eroare la încărcarea pacienților: $e')),
+        );
+      }
     }
   }
 
@@ -103,23 +128,26 @@ class _PacientScreenState extends State<PacientScreen> {
                     Text('Sex:'),
                     Wrap(
                       spacing: 10,
-                      children: ['M', 'F'].map((value) {
-                        return ChoiceChip(
-                          label: Text(value),
-                          selected: _selectedSex == value,
-                          selectedColor: Colors.teal,
-                          labelStyle: TextStyle(
-                            color:
-                                _selectedSex == value ? Colors.white : Colors.black,
-                            fontWeight: FontWeight.bold,
-                          ),
-                          onSelected: (_) {
-                            setStateDialog(() {
-                              _selectedSex = value;
-                            });
-                          },
-                        );
-                      }).toList(),
+                      children:
+                          ['M', 'F'].map((value) {
+                            return ChoiceChip(
+                              label: Text(value),
+                              selected: _selectedSex == value,
+                              selectedColor: Colors.teal,
+                              labelStyle: TextStyle(
+                                color:
+                                    _selectedSex == value
+                                        ? Colors.white
+                                        : Colors.black,
+                                fontWeight: FontWeight.bold,
+                              ),
+                              onSelected: (_) {
+                                setStateDialog(() {
+                                  _selectedSex = value;
+                                });
+                              },
+                            );
+                          }).toList(),
                     ),
                   ],
                 ),
@@ -133,7 +161,10 @@ class _PacientScreenState extends State<PacientScreen> {
                 final varsta = int.tryParse(_varstaController.text.trim()) ?? 0;
                 final telefon = _telefonController.text.trim();
 
-                if (nume.isNotEmpty && _selectedSex != null && varsta > 0 && telefon.length == 10) {
+                if (nume.isNotEmpty &&
+                    _selectedSex != null &&
+                    varsta > 0 &&
+                    telefon.length == 10) {
                   final newPacient = Pacient(
                     id: '',
                     nume: nume,
@@ -158,7 +189,11 @@ class _PacientScreenState extends State<PacientScreen> {
                       });
                 } else {
                   ScaffoldMessenger.of(context).showSnackBar(
-                    SnackBar(content: Text('Te rog completează toate câmpurile corect (telefon 10 cifre).')),
+                    SnackBar(
+                      content: Text(
+                        'Te rog completează toate câmpurile corect (telefon 10 cifre).',
+                      ),
+                    ),
                   );
                 }
               },
@@ -178,18 +213,19 @@ class _PacientScreenState extends State<PacientScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: !_isSearching
-            ? Text('Pacienți')
-            : TextField(
-                controller: _searchController,
-                decoration: InputDecoration(
-                  hintText: 'Caută pacient...',
-                  border: InputBorder.none,
-                  hintStyle: TextStyle(color: Colors.white54),
+        title:
+            !_isSearching
+                ? Text('Pacienți')
+                : TextField(
+                  controller: _searchController,
+                  decoration: InputDecoration(
+                    hintText: 'Caută pacient...',
+                    border: InputBorder.none,
+                    hintStyle: TextStyle(color: Colors.white54),
+                  ),
+                  style: TextStyle(color: Colors.white, fontSize: 18),
+                  autofocus: true,
                 ),
-                style: TextStyle(color: Colors.white, fontSize: 18),
-                autofocus: true,
-              ),
         backgroundColor: const Color.fromARGB(255, 10, 221, 221),
         actions: [
           if (!_isSearching)
@@ -223,47 +259,57 @@ class _PacientScreenState extends State<PacientScreen> {
             fit: BoxFit.cover,
           ),
         ),
-        child: _pacienti.isEmpty
-            ? Center(child: CircularProgressIndicator())
-            : ListView.builder(
-                itemCount: _isSearching ? _filteredPacienti.length : _pacienti.length,
-                itemBuilder: (context, index) {
-                  final pacient = _isSearching ? _filteredPacienti[index] : _pacienti[index];
-                  return Padding(
-                    padding: const EdgeInsets.all(8.0),
-                    child: Card(
-                      color: Colors.white.withOpacity(0.9),
-                      elevation: 5,
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(12),
-                      ),
-                      child: ListTile(
-                        title: Text(
-                          pacient.nume,
-                          style: TextStyle(
-                            fontWeight: FontWeight.bold,
-                            fontSize: 18,
-                          ),
+        child:
+            _pacienti.isEmpty
+                ? Center(child: CircularProgressIndicator())
+                : ListView.builder(
+                  itemCount:
+                      _isSearching
+                          ? _filteredPacienti.length
+                          : _pacienti.length,
+                  itemBuilder: (context, index) {
+                    final pacient =
+                        _isSearching
+                            ? _filteredPacienti[index]
+                            : _pacienti[index];
+                    return Padding(
+                      padding: const EdgeInsets.all(8.0),
+                      child: Card(
+                        color: Colors.white.withOpacity(0.9),
+                        elevation: 5,
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(12),
                         ),
-                        subtitle: Text(
-                          'Vârstă: ${pacient.varsta}, Sex: ${pacient.sex}',
-                          style: TextStyle(fontSize: 14),
-                        ),
-                        onTap: () {
-                          Navigator.of(context).push(
-                            MaterialPageRoute(
-                              builder: (context) => PacientDetailScreen(
-                                userId: widget.user.id!,
-                                pacient: pacient,
-                              ),
+                        child: ListTile(
+                          title: Text(
+                            pacient.nume,
+                            style: TextStyle(
+                              fontWeight: FontWeight.bold,
+                              fontSize: 18,
                             ),
-                          );
-                        },
+                          ),
+                          subtitle: Text(
+                            'Vârstă: ${pacient.varsta}, Sex: ${pacient.sex}',
+                            style: TextStyle(fontSize: 14),
+                          ),
+                          onTap: () async {
+                            final result = await Navigator.of(context).push(
+                              MaterialPageRoute(
+                                builder:
+                                    (context) => PacientDetailScreen(
+                                      userId: widget.user.id!,
+                                      pacient: pacient,
+                                    ),
+                              ),
+                            );
+                            print('Result from PacientDetailScreen: $result');
+                            // Optional: refresh-ul este acum în didPopNext, deci nu mai e nevoie aici
+                          },
+                        ),
                       ),
-                    ),
-                  );
-                },
-              ),
+                    );
+                  },
+                ),
       ),
     );
   }

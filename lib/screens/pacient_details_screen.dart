@@ -9,7 +9,11 @@ class PacientDetailScreen extends StatefulWidget {
   final String userId;
   final Pacient pacient;
 
-  const PacientDetailScreen({super.key, required this.userId, required this.pacient});
+  const PacientDetailScreen({
+    super.key,
+    required this.userId,
+    required this.pacient,
+  });
 
   @override
   State<PacientDetailScreen> createState() => _PacientDetailScreenState();
@@ -30,7 +34,11 @@ class _PacientDetailScreenState extends State<PacientDetailScreen> {
   void initState() {
     super.initState();
     _pacient = widget.pacient;
-    _surgeryRepo = SurgeryRepository(userId: widget.userId, pacientId: _pacient.id);
+
+    _surgeryRepo = SurgeryRepository(
+      userId: widget.userId,
+      pacientId: _pacient.id,
+    );
     _patientRepo = PatientRepository(userId: widget.userId);
 
     _numeController = TextEditingController(text: _pacient.nume);
@@ -77,22 +85,26 @@ class _PacientDetailScreenState extends State<PacientDetailScreen> {
                 Text('Sex:'),
                 Wrap(
                   spacing: 10,
-                  children: ['M', 'F'].map((value) {
-                    return ChoiceChip(
-                      label: Text(value),
-                      selected: _selectedSex == value,
-                      selectedColor: Colors.teal,
-                      labelStyle: TextStyle(
-                        color: _selectedSex == value ? Colors.white : Colors.black,
-                        fontWeight: FontWeight.bold,
-                      ),
-                      onSelected: (_) {
-                        setState(() {
-                          _selectedSex = value;
-                        });
-                      },
-                    );
-                  }).toList(),
+                  children:
+                      ['M', 'F'].map((value) {
+                        return ChoiceChip(
+                          label: Text(value),
+                          selected: _selectedSex == value,
+                          selectedColor: Colors.teal,
+                          labelStyle: TextStyle(
+                            color:
+                                _selectedSex == value
+                                    ? Colors.white
+                                    : Colors.black,
+                            fontWeight: FontWeight.bold,
+                          ),
+                          onSelected: (_) {
+                            setState(() {
+                              _selectedSex = value;
+                            });
+                          },
+                        );
+                      }).toList(),
                 ),
               ],
             ),
@@ -104,9 +116,16 @@ class _PacientDetailScreenState extends State<PacientDetailScreen> {
                 final varsta = int.tryParse(_varstaController.text.trim()) ?? 0;
                 final telefon = _telefonController.text.trim();
 
-                if (nume.isEmpty || _selectedSex == null || varsta <= 0 || telefon.length != 10) {
+                if (nume.isEmpty ||
+                    _selectedSex == null ||
+                    varsta <= 0 ||
+                    telefon.length != 10) {
                   ScaffoldMessenger.of(context).showSnackBar(
-                    SnackBar(content: Text('Completează toate câmpurile corect (telefon 10 cifre).')),
+                    SnackBar(
+                      content: Text(
+                        'Completează toate câmpurile corect (telefon 10 cifre).',
+                      ),
+                    ),
                   );
                   return;
                 }
@@ -124,7 +143,7 @@ class _PacientDetailScreenState extends State<PacientDetailScreen> {
                   setState(() {
                     _pacient = updatedPacient;
                   });
-                  Navigator.of(context).pop();
+                  Navigator.of(context).pop(true);
                 } catch (e) {
                   ScaffoldMessenger.of(context).showSnackBar(
                     SnackBar(content: Text('Eroare la actualizare: $e')),
@@ -134,7 +153,7 @@ class _PacientDetailScreenState extends State<PacientDetailScreen> {
               child: Text('Salvează'),
             ),
             TextButton(
-              onPressed: () => Navigator.of(context).pop(),
+              onPressed: () => Navigator.of(context).pop(false),
               child: Text('Anulează'),
             ),
           ],
@@ -146,30 +165,31 @@ class _PacientDetailScreenState extends State<PacientDetailScreen> {
   void _showDeleteConfirmDialog() {
     showDialog(
       context: context,
-      builder: (context) => AlertDialog(
-        title: Text('Confirmare ștergere'),
-        content: Text('Sigur vrei să ștergi pacientul ${_pacient.nume}?'),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.of(context).pop(),
-            child: Text('Anulează'),
+      builder:
+          (context) => AlertDialog(
+            title: Text('Confirmare ștergere'),
+            content: Text('Sigur vrei să ștergi pacientul ${_pacient.nume}?'),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.of(context).pop(false),
+                child: Text('Anulează'),
+              ),
+              TextButton(
+                onPressed: () async {
+                  try {
+                    await _patientRepo.deletePacient(_pacient.id);
+                    Navigator.of(context).pop();
+                    Navigator.of(context).pop(true);
+                  } catch (e) {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      SnackBar(content: Text('Eroare la ștergere: $e')),
+                    );
+                  }
+                },
+                child: Text('Șterge', style: TextStyle(color: Colors.red)),
+              ),
+            ],
           ),
-          TextButton(
-            onPressed: () async {
-              try {
-                await _patientRepo.deletePacient(_pacient.id);
-                Navigator.of(context).pop(); // închide dialogul
-                Navigator.of(context).pop(true); // închide ecranul detaliu
-              } catch (e) {
-                ScaffoldMessenger.of(context).showSnackBar(
-                  SnackBar(content: Text('Eroare la ștergere: $e')),
-                );
-              }
-            },
-            child: Text('Șterge', style: TextStyle(color: Colors.red)),
-          ),
-        ],
-      ),
     );
   }
 
@@ -209,52 +229,56 @@ class _PacientDetailScreenState extends State<PacientDetailScreen> {
               decoration: BoxDecoration(
                 gradient: LinearGradient(
                   colors: [
-                    const Color.fromARGB(255, 10, 221, 221).withOpacity(0.8),
-                    const Color.fromARGB(255, 10, 221, 221).withOpacity(0.6),
+                    Color.fromARGB(255, 10, 221, 221).withOpacity(0.8),
+                    Color.fromARGB(255, 10, 221, 221).withOpacity(0.6),
                   ],
                   begin: Alignment.topCenter,
                   end: Alignment.bottomCenter,
                 ),
               ),
-              padding: const EdgeInsets.fromLTRB(24, 80, 24, 24),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    pacient.nume,
-                    style: TextStyle(
-                      fontSize: 32,
-                      fontWeight: FontWeight.bold,
-                      color: Colors.white,
-                      shadows: [Shadow(blurRadius: 6, color: Colors.black54, offset: Offset(1, 1))],
+              padding: EdgeInsets.fromLTRB(24, 80, 24, 24),
+              child: SingleChildScrollView(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      pacient.nume,
+                      style: TextStyle(
+                        fontSize: 32,
+                        fontWeight: FontWeight.bold,
+                        color: Colors.white,
+                        shadows: [
+                          Shadow(
+                            blurRadius: 6,
+                            color: Colors.black54,
+                            offset: Offset(1, 1),
+                          ),
+                        ],
+                      ),
                     ),
-                  ),
-                  SizedBox(height: 12),
-                  Row(
-                    children: [
-                      Text(
-                        'Vârstă: ${pacient.varsta}',
-                        style: TextStyle(fontSize: 20, color: Colors.white),
-                      ),
-                      SizedBox(width: 30),
-                      Text(
-                        'Sex: ${pacient.sex}',
-                        style: TextStyle(fontSize: 20, color: Colors.white),
-                      ),
-                    ],
-                  ),
-                  SizedBox(height: 8),
-                  Row(
-                    children: [
-                      Icon(Icons.phone, color: Colors.white, size: 20),
-                      SizedBox(width: 6),
-                      Text(
-                        pacient.telefon ?? '',
-                        style: TextStyle(fontSize: 18, color: Colors.white),
-                      ),
-                    ],
-                  ),
-                ],
+                    SizedBox(height: 12),
+                    Row(
+                      children: [
+                        Text(
+                          'Vârstă: ${pacient.varsta}',
+                          style: TextStyle(fontSize: 20, color: Colors.white),
+                        ),
+                        SizedBox(width: 30),
+                        Text(
+                          'Sex: ${pacient.sex}',
+                          style: TextStyle(fontSize: 20, color: Colors.white),
+                        ),
+                        SizedBox(width: 30),
+                        Icon(Icons.phone, color: Colors.white, size: 20),
+                        SizedBox(width: 6),
+                        Text(
+                          '${pacient.telefon}',
+                          style: TextStyle(fontSize: 20, color: Colors.white),
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
               ),
             ),
           ),
@@ -269,7 +293,7 @@ class _PacientDetailScreenState extends State<PacientDetailScreen> {
                   topRight: Radius.circular(32),
                 ),
               ),
-              padding: const EdgeInsets.fromLTRB(24, 24, 24, 24),
+              padding: EdgeInsets.fromLTRB(24, 24, 24, 24),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
@@ -281,11 +305,11 @@ class _PacientDetailScreenState extends State<PacientDetailScreen> {
                         style: TextStyle(
                           fontSize: 22,
                           fontWeight: FontWeight.bold,
-                          color: const Color.fromARGB(255, 10, 221, 221),
+                          color: Color.fromARGB(255, 10, 221, 221),
                         ),
                       ),
                       Material(
-                        color: const Color.fromARGB(255, 10, 221, 221),
+                        color: Color.fromARGB(255, 10, 221, 221),
                         shape: CircleBorder(),
                         child: IconButton(
                           icon: Icon(Icons.add, color: Colors.white),
@@ -297,13 +321,17 @@ class _PacientDetailScreenState extends State<PacientDetailScreen> {
                     ],
                   ),
                   SizedBox(height: 12),
-
                   Expanded(
                     child: FutureBuilder<List<Surgery>>(
                       future: _surgeriesFuture,
                       builder: (context, snapshot) {
-                        if (snapshot.connectionState == ConnectionState.waiting) {
-                          return Center(child: CircularProgressIndicator(color: Colors.teal));
+                        if (snapshot.connectionState ==
+                            ConnectionState.waiting) {
+                          return Center(
+                            child: CircularProgressIndicator(
+                              color: Colors.teal,
+                            ),
+                          );
                         }
                         if (snapshot.hasError) {
                           return Center(
@@ -324,32 +352,35 @@ class _PacientDetailScreenState extends State<PacientDetailScreen> {
                         }
                         return ListView.separated(
                           itemCount: surgeries.length,
-                          separatorBuilder: (context, index) => Divider(color: Colors.grey[300]),
+                          separatorBuilder:
+                              (context, index) => Divider(
+                                color: const Color.fromARGB(255, 196, 252, 230),
+                              ),
                           itemBuilder: (context, index) {
                             final surgery = surgeries[index];
-                            final formattedDate = DateFormat('dd.MM.yyyy').format(surgery.dataEfectuarii);
-                            return ListTile(
-                              title: Text(
-                                surgery.nume,
-                                style: TextStyle(fontWeight: FontWeight.w600),
+                            final formattedDate = DateFormat(
+                              'dd.MM.yyyy',
+                            ).format(surgery.dataEfectuarii);
+                            return Card(
+                              color: const Color.fromARGB(
+                                255,
+                                190,
+                                246,
+                                231,
+                              ).withOpacity(0.9),
+                              elevation: 4,
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(12),
                               ),
-                              subtitle: Text('Data: $formattedDate'),
-                              trailing: Row(
-                                mainAxisSize: MainAxisSize.min,
-                                children: [
-                                  IconButton(
-                                    icon: Icon(Icons.edit, color: Colors.teal[700]),
-                                    onPressed: () {
-                                      // TODO: Editare operatie
-                                    },
-                                  ),
-                                  IconButton(
-                                    icon: Icon(Icons.delete, color: Colors.red[400]),
-                                    onPressed: () {
-                                      // TODO: Ștergere operatie
-                                    },
-                                  ),
-                                ],
+                              child: ListTile(
+                                title: Text(
+                                  surgery.nume,
+                                  style: TextStyle(fontWeight: FontWeight.bold),
+                                ),
+                                subtitle: Text('Data: $formattedDate'),
+                                onTap: () {
+                                  // TODO: Navigare către ecranul detaliat al operației
+                                },
                               ),
                             );
                           },

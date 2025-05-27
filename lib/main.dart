@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'screens/auth_screen.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'firebase_options.dart';
+import 'route_observer.dart'; // importă observer-ul
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -22,6 +23,7 @@ class PostOpCareApp extends StatelessWidget {
         useMaterial3: true,
       ),
       home: const AuthScreen(),
+      navigatorObservers: [routeObserver], // setează observer-ul aici
     );
   }
 }
